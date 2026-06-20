@@ -1,0 +1,46 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.openjfx.javafxplugin' version '0.1.0'
+}
+
+group = 'com.sshmanager'
+version = '1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'com.sshmanager.MainApp'
+}
+
+javafx {
+    version = '21.0.2'
+    modules = ['javafx.controls', 'javafx.fxml']
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // SSH 라이브러리
+    implementation 'com.hierynomus:sshj:0.38.0'
+
+    // 로깅
+    implementation 'org.slf4j:slf4j-simple:2.0.9'
+}
+
+// EXE 배포용 fat jar (모든 의존성 포함)
+jar {
+    manifest {
+        attributes 'Main-Class': 'com.sshmanager.MainApp'
+    }
+    // 모든 의존성을 하나의 jar로 합치기
+    from configurations.runtimeClasspath.collect {
+        it.isDirectory() ? it : zipTree(it)
+    }
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
