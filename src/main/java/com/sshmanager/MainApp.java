@@ -15,10 +15,12 @@ public class MainApp extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/main.fxml"));
         Scene scene = new Scene(loader.load());
 
-        primaryStage.setTitle("SSH Manager");
+        primaryStage.setTitle("DevPod");
         primaryStage.setScene(scene);
-        primaryStage.setMinWidth(700);
-        primaryStage.setMinHeight(500);
+        primaryStage.setWidth(1280);
+        primaryStage.setHeight(820);
+        primaryStage.setMinWidth(960);
+        primaryStage.setMinHeight(640);
         primaryStage.show();
     }
 
