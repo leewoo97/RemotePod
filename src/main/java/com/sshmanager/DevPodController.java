@@ -11,6 +11,7 @@ import javafx.scene.control.Label;
 import javafx.scene.control.Labeled;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
@@ -36,13 +37,19 @@ public class DevPodController {
     @FXML private TextField projectPathField;
     @FXML private TextField devcontainerPathField;
     @FXML private Button createWorkspaceButton;
+    @FXML private Button headerCreateButton;
+    @FXML private Button cancelWorkspaceButton;
+    @FXML private Node consoleView;
+    @FXML private TextArea consoleOutputArea;
 
     private final SshService sshService = new SshService();
+    private Task<String> activeCreateTask;
 
     @FXML
     private void initialize() {
         loadSvgIcons(workspaceView);
         loadSvgIcons(createView);
+        loadSvgIcons(consoleView);
     }
 
     @FXML
@@ -50,10 +57,16 @@ public class DevPodController {
         titleLabel.setText("Create Workspace");
         backButton.setVisible(true);
         backButton.setManaged(true);
+        headerCreateButton.setVisible(true);
+        headerCreateButton.setManaged(true);
+        cancelWorkspaceButton.setVisible(false);
+        cancelWorkspaceButton.setManaged(false);
         workspaceView.setVisible(false);
         workspaceView.setManaged(false);
         createView.setVisible(true);
         createView.setManaged(true);
+        consoleView.setVisible(false);
+        consoleView.setManaged(false);
     }
 
     @FXML
@@ -61,10 +74,26 @@ public class DevPodController {
         titleLabel.setText("Workspaces");
         backButton.setVisible(false);
         backButton.setManaged(false);
+        headerCreateButton.setVisible(true);
+        headerCreateButton.setManaged(true);
+        cancelWorkspaceButton.setVisible(false);
+        cancelWorkspaceButton.setManaged(false);
         createView.setVisible(false);
         createView.setManaged(false);
+        consoleView.setVisible(false);
+        consoleView.setManaged(false);
         workspaceView.setVisible(true);
         workspaceView.setManaged(true);
+    }
+
+    @FXML
+    private void cancelWorkspaceCreation() {
+        appendConsole("\nCancel requested. Closing SSH session...\n");
+        if (activeCreateTask != null) {
+            activeCreateTask.cancel();
+        }
+        sshService.disconnect();
+        cancelWorkspaceButton.setDisable(true);
     }
 
     @FXML
@@ -109,12 +138,16 @@ public class DevPodController {
     private void runCreateWorkspaceTask(String workspaceName, ServerInfo server, String command) {
         createWorkspaceButton.setDisable(true);
         createWorkspaceButton.setText("Creating...");
+        showConsole(workspaceName);
+        appendConsole("Connecting to " + server.getUser() + "@" + server.getHost() + ":" + server.getPort() + "...\n");
 
         Task<String> task = new Task<>() {
             @Override
             protected String call() throws Exception {
                 sshService.connect(server);
-                return sshService.executeChecked(command, 3600);
+                appendConsole("Connected.\n");
+                appendConsole("$ " + command + "\n\n");
+                return sshService.executeCheckedStreaming(command, 3600, DevPodController.this::appendConsole);
             }
 
             @Override
@@ -122,10 +155,13 @@ public class DevPodController {
                 sshService.disconnect();
                 createWorkspaceButton.setDisable(false);
                 createWorkspaceButton.setText("Create Workspace");
+                cancelWorkspaceButton.setVisible(false);
+                cancelWorkspaceButton.setManaged(false);
+                cancelWorkspaceButton.setDisable(false);
                 emptyWorkspaceState.setVisible(false);
                 emptyWorkspaceState.setManaged(false);
                 workspaceList.getChildren().add(createWorkspaceRow(workspaceName, "Running"));
-                showWorkspaces();
+                appendConsole("\nWorkspace is running.\n");
             }
 
             @Override
@@ -133,15 +169,58 @@ public class DevPodController {
                 sshService.disconnect();
                 createWorkspaceButton.setDisable(false);
                 createWorkspaceButton.setText("Create Workspace");
+                cancelWorkspaceButton.setVisible(false);
+                cancelWorkspaceButton.setManaged(false);
+                cancelWorkspaceButton.setDisable(false);
                 Throwable exception = getException();
+                appendConsole("\nCreate Workspace failed: "
+                        + (exception == null ? "Unknown error" : exception.getMessage())
+                        + "\n");
                 showWarning("Create Workspace failed",
                         exception == null ? "Unknown error" : exception.getMessage());
             }
+
+            @Override
+            protected void cancelled() {
+                sshService.disconnect();
+                createWorkspaceButton.setDisable(false);
+                createWorkspaceButton.setText("Create Workspace");
+                cancelWorkspaceButton.setVisible(false);
+                cancelWorkspaceButton.setManaged(false);
+                cancelWorkspaceButton.setDisable(false);
+                appendConsole("Cancelled.\n");
+            }
         };
 
+        activeCreateTask = task;
         Thread thread = new Thread(task, "devpod-create-workspace");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private void showConsole(String workspaceName) {
+        titleLabel.setText("start " + workspaceName);
+        backButton.setVisible(true);
+        backButton.setManaged(true);
+        headerCreateButton.setVisible(false);
+        headerCreateButton.setManaged(false);
+        cancelWorkspaceButton.setVisible(true);
+        cancelWorkspaceButton.setManaged(true);
+        cancelWorkspaceButton.setDisable(false);
+        workspaceView.setVisible(false);
+        workspaceView.setManaged(false);
+        createView.setVisible(false);
+        createView.setManaged(false);
+        consoleView.setVisible(true);
+        consoleView.setManaged(true);
+        consoleOutputArea.clear();
+    }
+
+    private void appendConsole(String text) {
+        Platform.runLater(() -> {
+            consoleOutputArea.appendText(text);
+            consoleOutputArea.positionCaret(consoleOutputArea.getLength());
+        });
     }
 
     private Node createWorkspaceRow(String workspaceName, String statusText) {

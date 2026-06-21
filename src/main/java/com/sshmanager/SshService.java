@@ -16,6 +16,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.Consumer;
 
 public class SshService {
 
@@ -48,7 +49,21 @@ public class SshService {
         return execute(command, timeoutSeconds, true);
     }
 
+    public String executeCheckedStreaming(String command, long timeoutSeconds, Consumer<String> outputConsumer)
+            throws IOException {
+        return executeStreaming(command, timeoutSeconds, true, outputConsumer);
+    }
+
     private String execute(String command, long timeoutSeconds, boolean failOnNonZeroExit) throws IOException {
+        return executeStreaming(command, timeoutSeconds, failOnNonZeroExit, null);
+    }
+
+    private String executeStreaming(
+            String command,
+            long timeoutSeconds,
+            boolean failOnNonZeroExit,
+            Consumer<String> outputConsumer
+    ) throws IOException {
         if (!isConnected()) {
             throw new IOException("SSH server is not connected.");
         }
@@ -58,8 +73,8 @@ public class SshService {
             ExecutorService executor = Executors.newFixedThreadPool(2);
 
             try {
-                Future<String> stdout = executor.submit(readStream(cmd.getInputStream()));
-                Future<String> stderr = executor.submit(readStream(cmd.getErrorStream()));
+                Future<String> stdout = executor.submit(readStream(cmd.getInputStream(), outputConsumer));
+                Future<String> stderr = executor.submit(readStream(cmd.getErrorStream(), outputConsumer));
 
                 cmd.join(timeoutSeconds, TimeUnit.SECONDS);
                 if (cmd.getExitStatus() == null) {
@@ -110,7 +125,7 @@ public class SshService {
         return currentServer;
     }
 
-    private Callable<String> readStream(InputStream inputStream) {
+    private Callable<String> readStream(InputStream inputStream, Consumer<String> outputConsumer) {
         return () -> {
             StringBuilder output = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(
@@ -118,6 +133,9 @@ public class SshService {
                 String line;
                 while ((line = reader.readLine()) != null) {
                     output.append(line).append("\n");
+                    if (outputConsumer != null) {
+                        outputConsumer.accept(line + "\n");
+                    }
                 }
             }
             return output.toString();

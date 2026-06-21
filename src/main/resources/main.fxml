@@ -108,6 +108,13 @@
                         </HBox.margin>
                     </Button>
 
+                    <Button fx:id="cancelWorkspaceButton" text="Cancel" onAction="#cancelWorkspaceCreation" visible="false" managed="false" focusTraversable="false"
+                            style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 6 11 6 11; -fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 600;">
+                        <HBox.margin>
+                            <Insets left="14"/>
+                        </HBox.margin>
+                    </Button>
+
                     <Region HBox.hgrow="ALWAYS"/>
 
                     <ImageView fitWidth="16" fitHeight="16" preserveRatio="true">
@@ -303,6 +310,34 @@
                             </HBox>
                         </VBox>
                     </ScrollPane>
+
+                    <VBox fx:id="consoleView" visible="false" managed="false" spacing="22"
+                          style="-fx-background-color: #ffffff;">
+                        <padding>
+                            <Insets top="26" right="22" bottom="0" left="22"/>
+                        </padding>
+
+                        <HBox alignment="CENTER_LEFT" prefHeight="34"
+                              style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 5; -fx-background-radius: 5;">
+                            <padding>
+                                <Insets left="10" right="10"/>
+                            </padding>
+                            <ImageView fitWidth="16" fitHeight="16" preserveRatio="true">
+                                <image><Image url="@images/png-fixed/Search.png"/></image>
+                            </ImageView>
+                            <TextField promptText="Search..." focusTraversable="false" editable="false" HBox.hgrow="ALWAYS"
+                                       style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 4 8; -fx-text-fill: #697386; -fx-prompt-text-fill: #697386; -fx-font-size: 13px;"/>
+                            <Label text="Aa" style="-fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;"/>
+                            <Label text="ab" style="-fx-text-fill: #111827; -fx-font-size: 12px; -fx-underline: true;">
+                                <HBox.margin>
+                                    <Insets left="16"/>
+                                </HBox.margin>
+                            </Label>
+                        </HBox>
+
+                        <TextArea fx:id="consoleOutputArea" editable="false" wrapText="false" VBox.vgrow="ALWAYS"
+                                  style="-fx-control-inner-background: #171923; -fx-background-color: #171923; -fx-text-fill: #ffffff; -fx-highlight-fill: #2d3748; -fx-highlight-text-fill: #ffffff; -fx-font-family: Consolas, 'Courier New', monospace; -fx-font-size: 13px; -fx-border-color: transparent; -fx-background-radius: 5;"/>
+                    </VBox>
                 </StackPane>
             </center>
 
