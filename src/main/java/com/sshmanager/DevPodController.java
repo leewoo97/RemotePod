@@ -4,8 +4,12 @@ import javafx.fxml.FXML;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
+import javafx.concurrent.Task;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Labeled;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
@@ -26,6 +30,14 @@ public class DevPodController {
     @FXML private Node emptyWorkspaceState;
     @FXML private VBox workspaceList;
     @FXML private TextField workspaceNameField;
+    @FXML private TextField sshServerAddressField;
+    @FXML private TextField sshUserField;
+    @FXML private PasswordField sshPasswordField;
+    @FXML private TextField projectPathField;
+    @FXML private TextField devcontainerPathField;
+    @FXML private Button createWorkspaceButton;
+
+    private final SshService sshService = new SshService();
 
     @FXML
     private void initialize() {
@@ -65,13 +77,74 @@ public class DevPodController {
             workspaceName = "my-workspace";
         }
 
-        emptyWorkspaceState.setVisible(false);
-        emptyWorkspaceState.setManaged(false);
-        workspaceList.getChildren().add(createWorkspaceRow(workspaceName));
-        showWorkspaces();
+        String address = getTrimmedText(sshServerAddressField);
+        String user = getTrimmedText(sshUserField);
+        String password = sshPasswordField.getText() == null ? "" : sshPasswordField.getText();
+        String projectPath = getTrimmedText(projectPathField);
+        String devcontainerPath = getTrimmedText(devcontainerPathField);
+
+        if (address.isEmpty() || user.isEmpty() || projectPath.isEmpty() || devcontainerPath.isEmpty()) {
+            showWarning("Missing required fields",
+                    "SSH Server Address, User, Project Path, and Devcontainer Path are required.");
+            return;
+        }
+
+        ServerEndpoint endpoint;
+        try {
+            endpoint = parseServerAddress(address);
+        } catch (IllegalArgumentException e) {
+            showWarning("Invalid SSH server address", e.getMessage());
+            return;
+        }
+
+        String command = "devpod up "
+                + shellQuote(projectPath)
+                + " --devcontainer-path "
+                + shellQuote(devcontainerPath)
+                + " --ide none";
+        ServerInfo server = new ServerInfo(workspaceName, endpoint.host(), endpoint.port(), user, password);
+        runCreateWorkspaceTask(workspaceName, server, command);
     }
 
-    private Node createWorkspaceRow(String workspaceName) {
+    private void runCreateWorkspaceTask(String workspaceName, ServerInfo server, String command) {
+        createWorkspaceButton.setDisable(true);
+        createWorkspaceButton.setText("Creating...");
+
+        Task<String> task = new Task<>() {
+            @Override
+            protected String call() throws Exception {
+                sshService.connect(server);
+                return sshService.executeChecked(command, 3600);
+            }
+
+            @Override
+            protected void succeeded() {
+                sshService.disconnect();
+                createWorkspaceButton.setDisable(false);
+                createWorkspaceButton.setText("Create Workspace");
+                emptyWorkspaceState.setVisible(false);
+                emptyWorkspaceState.setManaged(false);
+                workspaceList.getChildren().add(createWorkspaceRow(workspaceName, "Running"));
+                showWorkspaces();
+            }
+
+            @Override
+            protected void failed() {
+                sshService.disconnect();
+                createWorkspaceButton.setDisable(false);
+                createWorkspaceButton.setText("Create Workspace");
+                Throwable exception = getException();
+                showWarning("Create Workspace failed",
+                        exception == null ? "Unknown error" : exception.getMessage());
+            }
+        };
+
+        Thread thread = new Thread(task, "devpod-create-workspace");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    private Node createWorkspaceRow(String workspaceName, String statusText) {
         HBox row = new HBox(14);
         row.setMinHeight(58);
         row.setPadding(new Insets(12, 16, 12, 16));
@@ -83,13 +156,57 @@ public class DevPodController {
         Label type = new Label("SSH");
         type.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 13px; -fx-font-weight: 700;");
 
-        Label status = new Label("Stopped");
+        Label status = new Label(statusText);
         status.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 13px; -fx-font-weight: 700;");
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
         row.getChildren().addAll(name, type, spacer, status);
         return row;
+    }
+
+    private String getTrimmedText(TextField textField) {
+        return textField.getText() == null ? "" : textField.getText().trim();
+    }
+
+    private ServerEndpoint parseServerAddress(String address) {
+        String host = address;
+        int port = 22;
+
+        int separatorIndex = address.lastIndexOf(':');
+        if (separatorIndex > 0 && separatorIndex < address.length() - 1) {
+            host = address.substring(0, separatorIndex).trim();
+            String portText = address.substring(separatorIndex + 1).trim();
+            try {
+                port = Integer.parseInt(portText);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Port must be a number.");
+            }
+        }
+
+        if (host.isEmpty()) {
+            throw new IllegalArgumentException("Host is required.");
+        }
+        if (port < 1 || port > 65535) {
+            throw new IllegalArgumentException("Port must be between 1 and 65535.");
+        }
+
+        return new ServerEndpoint(host, port);
+    }
+
+    private String shellQuote(String value) {
+        return "'" + value.replace("'", "'\"'\"'") + "'";
+    }
+
+    private void showWarning(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
+
+    private record ServerEndpoint(String host, int port) {
     }
 
     private void loadSvgIcons(Node node) {

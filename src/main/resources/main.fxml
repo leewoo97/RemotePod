@@ -96,7 +96,7 @@
                     <Label fx:id="titleLabel" text="Workspaces"
                            style="-fx-text-fill: #111827; -fx-font-size: 15px; -fx-font-weight: 700;"/>
 
-                    <Button text="Create" onAction="#showCreateWorkspace" focusTraversable="false"
+                    <Button fx:id="headerCreateButton" text="Create" onAction="#showCreateWorkspace" focusTraversable="false"
                             style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 6 11 6 11; -fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 600;">
                         <graphic>
                              <ImageView fitWidth="12" fitHeight="12" preserveRatio="true">
@@ -214,27 +214,27 @@
                                         <GridPane alignment="CENTER" hgap="10" vgap="9">
                                             <Label text="SSH Server Address" GridPane.columnIndex="0" GridPane.rowIndex="0"
                                                    style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
-                                            <TextField text="172.17.141.16:22" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="0"
+                                            <TextField fx:id="sshServerAddressField" text="172.17.141.16:22" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="0"
                                                        style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
 
                                             <Label text="User" GridPane.columnIndex="0" GridPane.rowIndex="1"
                                                    style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
-                                            <TextField text="root" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="1"
+                                            <TextField fx:id="sshUserField" text="root" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="1"
                                                        style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
 
                                             <Label text="Password" GridPane.columnIndex="0" GridPane.rowIndex="2"
                                                    style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
-                                            <PasswordField text="password" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="2"
+                                            <PasswordField fx:id="sshPasswordField" text="password" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="2"
                                                            style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
 
                                             <Label text="Project Path" GridPane.columnIndex="0" GridPane.rowIndex="3"
                                                    style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
-                                            <TextField text="/workspace/my-project" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="3"
+                                            <TextField fx:id="projectPathField" text="/workspace/my-project" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="3"
                                                        style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
 
                                             <Label text="Devcontainer Path" GridPane.columnIndex="0" GridPane.rowIndex="4"
                                                    style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
-                                            <TextField text=".devcontainer/devcontainer.json" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="4"
+                                            <TextField fx:id="devcontainerPathField" text=".devcontainer/devcontainer.json" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="4"
                                                        style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
                                         </GridPane>
                                         <Label text="RemotePod will connect to the SSH server and use the selected project path as the workspace root."
@@ -298,7 +298,7 @@
 
                             <HBox alignment="CENTER_LEFT" prefHeight="58"
                                   style="-fx-border-color: #dce3ec transparent transparent transparent; -fx-border-width: 1 0 0 0;">
-                                <Button text="Create Workspace" onAction="#createWorkspace" focusTraversable="false"
+                                <Button fx:id="createWorkspaceButton" text="Create Workspace" onAction="#createWorkspace" focusTraversable="false"
                                         style="-fx-background-color: #d9a9f6; -fx-background-radius: 5; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;"/>
                             </HBox>
                         </VBox>
