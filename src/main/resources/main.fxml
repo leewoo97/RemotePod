@@ -4,6 +4,7 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.shape.SVGPath?>
+<?import javafx.scene.web.WebView?>
 
 <BorderPane xmlns:fx="http://javafx.com/fxml"
             fx:controller="com.sshmanager.DevPodController"
@@ -244,23 +245,24 @@
                                 </padding>
                                 <VBox spacing="14" GridPane.columnIndex="0" GridPane.rowIndex="0">
                                     <Label text="Default IDE *" style="-fx-text-fill: #1f2430; -fx-font-size: 16px; -fx-font-weight: 800;"/>
-                                    <TilePane hgap="13" vgap="13" prefColumns="7">
-                                        <Label text="None" style="-fx-font-size: 16px; -fx-font-weight: 900;"/>
-                                        <Label text="VS" style="-fx-text-fill: #5096e8; -fx-font-size: 30px; -fx-font-weight: 900;"/>
-                                        <Label text="VSC" style="-fx-text-fill: #4d91e5; -fx-font-size: 20px; -fx-font-weight: 900;"/>
-                                        <Label text="IJ" style="-fx-background-color: #111827; -fx-text-fill: white; -fx-font-size: 17px; -fx-font-weight: 900; -fx-padding: 6;"/>
-                                        <Label text="PC" style="-fx-background-color: #111827; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 900; -fx-padding: 6;"/>
-                                        <Label text="PS" style="-fx-background-color: #24104f; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 900; -fx-padding: 6;"/>
-                                        <Label text="RD" style="-fx-background-color: #2c2e36; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 900; -fx-padding: 6;"/>
-                                        <Label text="GO" style="-fx-background-color: #0f172a; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 900; -fx-padding: 6;"/>
-                                        <Label text="WS" style="-fx-background-color: #0f172a; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 900; -fx-padding: 6;"/>
-                                        <Label text="RR" style="-fx-background-color: #1e1e1e; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 900; -fx-padding: 6;"/>
-                                        <Label text="RM" style="-fx-background-color: #111827; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 900; -fx-padding: 6;"/>
-                                        <Label text="CL" style="-fx-background-color: #111827; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 900; -fx-padding: 6;"/>
-                                        <Label text="DS" style="-fx-background-color: #111827; -fx-text-fill: white; -fx-font-size: 14px; -fx-font-weight: 900; -fx-padding: 6;"/>
-                                        <Label text="Jupyter" style="-fx-text-fill: #d17a26; -fx-font-size: 14px; -fx-font-weight: 800;"/>
-                                    </TilePane>
-                                    <Label text="RemotePod will open this workspace with the selected IDE by default. You can still&#10;change your default IDE later."
+                                    <HBox spacing="15" alignment="CENTER_LEFT">
+                                        <WebView userData="none.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="vscode.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="vscodebrowser.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="intellij.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="pycharm.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="phpstorm.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="rider.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="goland.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="webstorm.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="rustrover.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="rubymine.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="clion.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="dataspell.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                        <WebView userData="jupyter.svg" prefWidth="40" prefHeight="40" minWidth="40" minHeight="40" maxWidth="40" maxHeight="40"/>
+                                    </HBox>
+                                    <Label text="RemotePod will open this workspace with the selected IDE by default. You can still change your default IDE later."
+                                           alignment="CENTER_LEFT" wrapText="false" maxWidth="Infinity"
                                            style="-fx-text-fill: #5f6b80; -fx-font-size: 15px;"/>
                                 </VBox>
                             </GridPane>

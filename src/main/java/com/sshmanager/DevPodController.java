@@ -4,10 +4,12 @@ import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.web.WebView;
 
 public class DevPodController {
 
@@ -18,6 +20,11 @@ public class DevPodController {
     @FXML private Node emptyWorkspaceState;
     @FXML private VBox workspaceList;
     @FXML private TextField workspaceNameField;
+
+    @FXML
+    private void initialize() {
+        loadSvgIcons(createView);
+    }
 
     @FXML
     private void showCreateWorkspace() {
@@ -76,5 +83,32 @@ public class DevPodController {
         HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
         row.getChildren().addAll(name, type, spacer, status);
         return row;
+    }
+
+    private void loadSvgIcons(Node node) {
+        if (node instanceof WebView webView && webView.getUserData() instanceof String iconName) {
+            var iconUrl = getClass().getResource("/icons/" + iconName);
+            if (iconUrl != null) {
+                String html = """
+                        <html>
+                          <body style="margin:0; overflow:hidden; background:transparent; display:flex; align-items:center; justify-content:center;">
+                            <img src="%s" style="width:100%%; height:100%%; object-fit:contain;" />
+                          </body>
+                        </html>
+                        """.formatted(iconUrl.toExternalForm());
+                webView.getEngine().loadContent(html);
+                webView.setContextMenuEnabled(false);
+            }
+        }
+
+        if (node instanceof ScrollPane scrollPane && scrollPane.getContent() != null) {
+            loadSvgIcons(scrollPane.getContent());
+        }
+
+        if (node instanceof javafx.scene.Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                loadSvgIcons(child);
+            }
+        }
     }
 }
