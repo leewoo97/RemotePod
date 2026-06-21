@@ -1,13 +1,21 @@
 package com.sshmanager;
 
 import javafx.fxml.FXML;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.scene.control.Label;
+import javafx.scene.control.Labeled;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.web.WebView;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 
 public class DevPodController {
 
@@ -18,6 +26,12 @@ public class DevPodController {
     @FXML private Node emptyWorkspaceState;
     @FXML private VBox workspaceList;
     @FXML private TextField workspaceNameField;
+
+    @FXML
+    private void initialize() {
+        loadSvgIcons(workspaceView);
+        loadSvgIcons(createView);
+    }
 
     @FXML
     private void showCreateWorkspace() {
@@ -76,5 +90,62 @@ public class DevPodController {
         HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
         row.getChildren().addAll(name, type, spacer, status);
         return row;
+    }
+
+    private void loadSvgIcons(Node node) {
+        if (node instanceof WebView webView && webView.getUserData() instanceof String iconName) {
+            webView.setPageFill(Color.TRANSPARENT);
+            webView.setStyle("-fx-background-color: transparent;");
+            var iconUrl = getClass().getResource("/icons/" + iconName);
+            if (iconUrl == null) {
+                iconUrl = getClass().getResource("/images/" + iconName);
+            }
+            if (iconUrl != null) {
+                try {
+                    String svg = new String(iconUrl.openStream().readAllBytes(), StandardCharsets.UTF_8);
+                    svg = svg.replaceFirst("<svg\\s+", "<svg style=\"color:#111827\" ");
+                    String html = """
+                        <html>
+                          <head>
+                            <style>
+                              html, body { margin: 0; width: 100%%; height: 100%%; overflow: hidden; background: rgba(0,0,0,0); color: #111827; }
+                              body { display: flex; align-items: center; justify-content: center; }
+                              svg { width: 100%%; height: 100%%; display: block; }
+                            </style>
+                          </head>
+                          <body>
+                            %s
+                          </body>
+                        </html>
+                        """.formatted(svg);
+                    webView.getEngine().loadContent(html);
+                    webView.setContextMenuEnabled(false);
+                    Platform.runLater(() -> {
+                        webView.setPageFill(Color.TRANSPARENT);
+                        webView.lookupAll(".scroll-bar").forEach(child -> child.setVisible(false));
+                        Node page = webView.lookup(".web-page");
+                        if (page != null) {
+                            page.setStyle("-fx-background-color: transparent;");
+                        }
+                    });
+                } catch (IOException ignored) {
+                    // Missing or unreadable decorative icon; leave the slot empty.
+                }
+            }
+        }
+
+        if (node instanceof Labeled labeled && labeled.getGraphic() != null) {
+            loadSvgIcons(labeled.getGraphic());
+        }
+
+        if (node instanceof ScrollPane scrollPane && scrollPane.getContent() != null) {
+            loadSvgIcons(scrollPane.getContent());
+        }
+
+        if (node instanceof javafx.scene.Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                loadSvgIcons(child);
+            }
+        }
     }
 }
