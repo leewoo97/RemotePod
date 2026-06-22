@@ -18,8 +18,8 @@
             </padding>
 
             <HBox alignment="CENTER_LEFT" spacing="10">
-                <ImageView fitWidth="110" fitHeight="29" preserveRatio="true">
-                    <image><Image url="@images/png-fixed/DevpodWordmark.png"/></image>
+                <ImageView fitWidth="132" fitHeight="44" preserveRatio="true">
+                    <image><Image url="@images/logo/mainlogo.png"/></image>
                 </ImageView>
             </HBox>
 
@@ -81,7 +81,7 @@
                         <Insets left="12" right="9"/>
                     </padding>
 
-                    <Label fx:id="backButton" onMouseClicked="#showWorkspaces" visible="false" managed="false"
+                    <Label fx:id="backButton" onMouseClicked="#goBack" visible="false" managed="false"
                            style="-fx-cursor: hand;">
                         <graphic>
                             <ImageView fitWidth="16" fitHeight="16" preserveRatio="true">
@@ -205,7 +205,7 @@
                                 <TextField fx:id="workspaceNameField" text="my-workspace" prefWidth="370" maxWidth="370"
                                            style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #69758b; -fx-font-size: 13px;"/>
                                 <Label wrapText="true" maxWidth="560"
-                                       text="This is the workspace Name Remotepod will use. This is an optional field and usually&#10;only needed if you have an already existing workspace with the same name."
+                                       text="This is the workspace name that RemotePod will use as the container name.&#10;&#10;If a name is already specified in your devcontainer.json, a conflict may occur. Please click &quot;Edit devcontainer.json&quot; below to modify or remove it before proceeding."
                                        style="-fx-text-fill: #4e586c; -fx-font-size: 12px;"/>
                                 <VBox.margin>
                                     <Insets bottom="24"/>
@@ -306,10 +306,41 @@
                             <HBox alignment="CENTER_LEFT" prefHeight="58"
                                   style="-fx-border-color: #dce3ec transparent transparent transparent; -fx-border-width: 1 0 0 0;">
                                 <Button fx:id="createWorkspaceButton" text="Create Workspace" onAction="#createWorkspace" focusTraversable="false"
+                                        prefWidth="176" prefHeight="34"
                                         style="-fx-background-color: #d9a9f6; -fx-background-radius: 5; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+                                <Button fx:id="editDevcontainerButton" text="Edit devcontainer.json" onAction="#editDevcontainer" focusTraversable="false"
+                                        prefWidth="176" prefHeight="34"
+                                        style="-fx-background-color: #79b8ff; -fx-background-radius: 5; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;">
+                                    <HBox.margin>
+                                        <Insets left="10"/>
+                                    </HBox.margin>
+                                </Button>
                             </HBox>
                         </VBox>
                     </ScrollPane>
+
+                    <VBox fx:id="devcontainerEditorView" visible="false" managed="false" spacing="14"
+                          style="-fx-background-color: #ffffff;">
+                        <padding>
+                            <Insets top="22" right="22" bottom="18" left="22"/>
+                        </padding>
+
+                        <HBox alignment="CENTER_LEFT" spacing="10">
+                            <Label text="devcontainer.json"
+                                   style="-fx-text-fill: #111827; -fx-font-size: 14px; -fx-font-weight: 800;"/>
+                            <Label fx:id="devcontainerEditorPathLabel"
+                                   style="-fx-text-fill: #697386; -fx-font-size: 12px;"/>
+                            <Region HBox.hgrow="ALWAYS"/>
+                            <Button fx:id="saveDevcontainerButton" text="Save" onAction="#saveDevcontainer" focusTraversable="false"
+                                    style="-fx-background-color: #111827; -fx-background-radius: 5; -fx-padding: 7 16; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+                        </HBox>
+
+                        <Label fx:id="devcontainerEditorStatusLabel"
+                               style="-fx-text-fill: #5f6b80; -fx-font-size: 12px;"/>
+
+                        <TextArea fx:id="devcontainerEditorArea" wrapText="false" VBox.vgrow="ALWAYS"
+                                  style="-fx-control-inner-background: #171923; -fx-background-color: #171923; -fx-text-fill: #ffffff; -fx-highlight-fill: #2d3748; -fx-highlight-text-fill: #ffffff; -fx-font-family: Consolas, 'Courier New', monospace; -fx-font-size: 13px; -fx-border-color: transparent; -fx-background-radius: 5;"/>
+                    </VBox>
 
                     <VBox fx:id="consoleView" visible="false" managed="false" spacing="22"
                           style="-fx-background-color: #ffffff;">

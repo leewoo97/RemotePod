@@ -3,6 +3,7 @@ package com.sshmanager;
 import javafx.application.Application;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
+import javafx.scene.image.Image;
 import javafx.stage.Stage;
 
 /**
@@ -16,6 +17,7 @@ public class MainApp extends Application {
         Scene scene = new Scene(loader.load());
 
         primaryStage.setTitle("DevPod");
+        primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo/image.png")));
         primaryStage.setScene(scene);
         primaryStage.setWidth(1280);
         primaryStage.setHeight(820);

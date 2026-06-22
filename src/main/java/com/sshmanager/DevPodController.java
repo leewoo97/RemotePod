@@ -21,8 +21,14 @@ import javafx.scene.web.WebView;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
 public class DevPodController {
+    private static final Pattern ANSI_ESCAPE_SEQUENCE = Pattern.compile("\\u001B\\[[0-?]*[ -/]*[@-~]|\\[[0-9;]*m");
+    private static final String CREATE_BUTTON_READY_STYLE = "-fx-background-color: #c66cf0; -fx-background-radius: 5; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;";
+    private static final String CREATE_BUTTON_PENDING_STYLE = "-fx-background-color: #ead3f8; -fx-background-radius: 5; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;";
+    private static final String EDIT_BUTTON_READY_STYLE = "-fx-background-color: #8acb63; -fx-background-radius: 5; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;";
+    private static final String EDIT_BUTTON_PENDING_STYLE = "-fx-background-color: #d7f2cc; -fx-background-radius: 5; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;";
 
     @FXML private Label titleLabel;
     @FXML private Label backButton;
@@ -37,19 +43,48 @@ public class DevPodController {
     @FXML private TextField projectPathField;
     @FXML private TextField devcontainerPathField;
     @FXML private Button createWorkspaceButton;
+    @FXML private Button editDevcontainerButton;
     @FXML private Button headerCreateButton;
     @FXML private Button cancelWorkspaceButton;
     @FXML private Node consoleView;
     @FXML private TextArea consoleOutputArea;
+    @FXML private Node devcontainerEditorView;
+    @FXML private Label devcontainerEditorPathLabel;
+    @FXML private Label devcontainerEditorStatusLabel;
+    @FXML private TextArea devcontainerEditorArea;
+    @FXML private Button saveDevcontainerButton;
 
     private final SshService sshService = new SshService();
     private Task<String> activeCreateTask;
+    private ServerInfo activeEditorServer;
+    private String activeEditorRemotePath;
 
     @FXML
     private void initialize() {
         loadSvgIcons(workspaceView);
         loadSvgIcons(createView);
         loadSvgIcons(consoleView);
+        loadSvgIcons(devcontainerEditorView);
+        workspaceNameField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
+        sshServerAddressField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
+        sshUserField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
+        sshPasswordField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
+        projectPathField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
+        devcontainerPathField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
+        updateWorkspaceActionButtonStyles();
+    }
+
+    @FXML
+    private void goBack() {
+        if (devcontainerEditorView.isVisible()) {
+            sshService.disconnect();
+            activeEditorServer = null;
+            activeEditorRemotePath = null;
+            showCreateWorkspace();
+            return;
+        }
+
+        showWorkspaces();
     }
 
     @FXML
@@ -67,6 +102,8 @@ public class DevPodController {
         createView.setManaged(true);
         consoleView.setVisible(false);
         consoleView.setManaged(false);
+        devcontainerEditorView.setVisible(false);
+        devcontainerEditorView.setManaged(false);
     }
 
     @FXML
@@ -82,8 +119,11 @@ public class DevPodController {
         createView.setManaged(false);
         consoleView.setVisible(false);
         consoleView.setManaged(false);
+        devcontainerEditorView.setVisible(false);
+        devcontainerEditorView.setManaged(false);
         workspaceView.setVisible(true);
         workspaceView.setManaged(true);
+        sshService.disconnect();
     }
 
     @FXML
@@ -98,41 +138,114 @@ public class DevPodController {
 
     @FXML
     private void createWorkspace() {
-        String workspaceName = workspaceNameField.getText() == null
-                ? ""
-                : workspaceNameField.getText().trim();
-
-        if (workspaceName.isEmpty()) {
-            workspaceName = "my-workspace";
-        }
-
-        String address = getTrimmedText(sshServerAddressField);
-        String user = getTrimmedText(sshUserField);
-        String password = sshPasswordField.getText() == null ? "" : sshPasswordField.getText();
-        String projectPath = getTrimmedText(projectPathField);
-        String devcontainerPath = getTrimmedText(devcontainerPathField);
-
-        if (address.isEmpty() || user.isEmpty() || projectPath.isEmpty() || devcontainerPath.isEmpty()) {
-            showWarning("Missing required fields",
-                    "SSH Server Address, User, Project Path, and Devcontainer Path are required.");
-            return;
-        }
-
-        ServerEndpoint endpoint;
-        try {
-            endpoint = parseServerAddress(address);
-        } catch (IllegalArgumentException e) {
-            showWarning("Invalid SSH server address", e.getMessage());
+        WorkspaceInput input = readWorkspaceInput();
+        if (input == null) {
             return;
         }
 
         String command = "devpod up "
-                + shellQuote(projectPath)
+                + shellQuote(input.projectPath())
                 + " --devcontainer-path "
-                + shellQuote(devcontainerPath)
+                + shellQuote(input.devcontainerPath())
+                + " --id "
+                + shellQuote(input.workspaceName())
                 + " --ide none";
-        ServerInfo server = new ServerInfo(workspaceName, endpoint.host(), endpoint.port(), user, password);
-        runCreateWorkspaceTask(workspaceName, server, command);
+        runCreateWorkspaceTask(input.workspaceName(), input.server(), command);
+    }
+
+    @FXML
+    private void editDevcontainer() {
+        WorkspaceInput input = readEditDevcontainerInput();
+        if (input == null) {
+            return;
+        }
+
+        String remotePath = combineRemotePath(input.projectPath(), input.devcontainerPath());
+        activeEditorServer = input.server();
+        activeEditorRemotePath = remotePath;
+        showDevcontainerEditor(remotePath);
+        devcontainerEditorArea.clear();
+        devcontainerEditorArea.setDisable(true);
+        saveDevcontainerButton.setDisable(true);
+        editDevcontainerButton.setDisable(true);
+        devcontainerEditorStatusLabel.setText("Connecting to " + input.server().getUser()
+                + "@" + input.server().getHost() + ":" + input.server().getPort() + "...");
+
+        Task<String> task = new Task<>() {
+            @Override
+            protected String call() throws Exception {
+                sshService.connect(input.server());
+                return sshService.readTextFile(remotePath);
+            }
+
+            @Override
+            protected void succeeded() {
+                devcontainerEditorArea.setText(getValue());
+                devcontainerEditorArea.setDisable(false);
+                saveDevcontainerButton.setDisable(false);
+                editDevcontainerButton.setDisable(false);
+                devcontainerEditorStatusLabel.setText("Loaded from SSH.");
+            }
+
+            @Override
+            protected void failed() {
+                sshService.disconnect();
+                devcontainerEditorArea.setDisable(false);
+                saveDevcontainerButton.setDisable(false);
+                editDevcontainerButton.setDisable(false);
+                Throwable exception = getException();
+                String message = exception == null ? "Unknown error" : exception.getMessage();
+                devcontainerEditorStatusLabel.setText("Failed to load file.");
+                showWarning("Edit devcontainer.json failed", message);
+                showCreateWorkspace();
+            }
+        };
+
+        Thread thread = new Thread(task, "devcontainer-load");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    @FXML
+    private void saveDevcontainer() {
+        if (activeEditorServer == null || activeEditorRemotePath == null) {
+            showWarning("Cannot save devcontainer.json", "No remote devcontainer.json file is open.");
+            return;
+        }
+
+        String content = devcontainerEditorArea.getText() == null ? "" : devcontainerEditorArea.getText();
+        saveDevcontainerButton.setDisable(true);
+        devcontainerEditorStatusLabel.setText("Saving...");
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                if (!sshService.isConnected()) {
+                    sshService.connect(activeEditorServer);
+                }
+                sshService.writeTextFile(activeEditorRemotePath, content);
+                return null;
+            }
+
+            @Override
+            protected void succeeded() {
+                saveDevcontainerButton.setDisable(false);
+                devcontainerEditorStatusLabel.setText("Saved.");
+            }
+
+            @Override
+            protected void failed() {
+                saveDevcontainerButton.setDisable(false);
+                Throwable exception = getException();
+                String message = exception == null ? "Unknown error" : exception.getMessage();
+                devcontainerEditorStatusLabel.setText("Save failed.");
+                showWarning("Save devcontainer.json failed", message);
+            }
+        };
+
+        Thread thread = new Thread(task, "devcontainer-save");
+        thread.setDaemon(true);
+        thread.start();
     }
 
     private void runCreateWorkspaceTask(String workspaceName, ServerInfo server, String command) {
@@ -213,14 +326,43 @@ public class DevPodController {
         createView.setManaged(false);
         consoleView.setVisible(true);
         consoleView.setManaged(true);
+        devcontainerEditorView.setVisible(false);
+        devcontainerEditorView.setManaged(false);
         consoleOutputArea.clear();
     }
 
+    private void showDevcontainerEditor(String remotePath) {
+        titleLabel.setText("Edit devcontainer.json");
+        backButton.setVisible(true);
+        backButton.setManaged(true);
+        headerCreateButton.setVisible(false);
+        headerCreateButton.setManaged(false);
+        cancelWorkspaceButton.setVisible(false);
+        cancelWorkspaceButton.setManaged(false);
+        workspaceView.setVisible(false);
+        workspaceView.setManaged(false);
+        createView.setVisible(false);
+        createView.setManaged(false);
+        consoleView.setVisible(false);
+        consoleView.setManaged(false);
+        devcontainerEditorView.setVisible(true);
+        devcontainerEditorView.setManaged(true);
+        devcontainerEditorPathLabel.setText(remotePath);
+    }
+
     private void appendConsole(String text) {
+        String sanitizedText = stripAnsiEscapeSequences(text);
         Platform.runLater(() -> {
-            consoleOutputArea.appendText(text);
+            consoleOutputArea.appendText(sanitizedText);
             consoleOutputArea.positionCaret(consoleOutputArea.getLength());
         });
+    }
+
+    private String stripAnsiEscapeSequences(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        return ANSI_ESCAPE_SEQUENCE.matcher(text).replaceAll("");
     }
 
     private Node createWorkspaceRow(String workspaceName, String statusText) {
@@ -246,6 +388,88 @@ public class DevPodController {
 
     private String getTrimmedText(TextField textField) {
         return textField.getText() == null ? "" : textField.getText().trim();
+    }
+
+    private void updateWorkspaceActionButtonStyles() {
+        createWorkspaceButton.setStyle(isCreateWorkspaceInputComplete()
+                ? CREATE_BUTTON_READY_STYLE
+                : CREATE_BUTTON_PENDING_STYLE);
+        editDevcontainerButton.setStyle(isEditDevcontainerInputComplete()
+                ? EDIT_BUTTON_READY_STYLE
+                : EDIT_BUTTON_PENDING_STYLE);
+    }
+
+    private boolean isCreateWorkspaceInputComplete() {
+        return !getTrimmedText(workspaceNameField).isEmpty()
+                && isEditDevcontainerInputComplete();
+    }
+
+    private boolean isEditDevcontainerInputComplete() {
+        return !getTrimmedText(sshServerAddressField).isEmpty()
+                && !getTrimmedText(sshUserField).isEmpty()
+                && sshPasswordField.getText() != null
+                && !sshPasswordField.getText().isEmpty()
+                && !getTrimmedText(projectPathField).isEmpty()
+                && !getTrimmedText(devcontainerPathField).isEmpty();
+    }
+
+    private WorkspaceInput readWorkspaceInput() {
+        String workspaceName = getTrimmedText(workspaceNameField);
+        String address = getTrimmedText(sshServerAddressField);
+        String user = getTrimmedText(sshUserField);
+        String password = sshPasswordField.getText() == null ? "" : sshPasswordField.getText();
+        String projectPath = getTrimmedText(projectPathField);
+        String devcontainerPath = getTrimmedText(devcontainerPathField);
+
+        if (!isCreateWorkspaceInputComplete()) {
+            showWarning("Missing required fields",
+                    "Workspace Name, SSH Server Address, User, Password, Project Path, and Devcontainer Path are required.");
+            return null;
+        }
+
+        ServerEndpoint endpoint;
+        try {
+            endpoint = parseServerAddress(address);
+        } catch (IllegalArgumentException e) {
+            showWarning("Invalid SSH server address", e.getMessage());
+            return null;
+        }
+
+        ServerInfo server = new ServerInfo(workspaceName, endpoint.host(), endpoint.port(), user, password);
+        return new WorkspaceInput(workspaceName, server, projectPath, devcontainerPath);
+    }
+
+    private WorkspaceInput readEditDevcontainerInput() {
+        String workspaceName = getTrimmedText(workspaceNameField);
+        String address = getTrimmedText(sshServerAddressField);
+        String user = getTrimmedText(sshUserField);
+        String password = sshPasswordField.getText() == null ? "" : sshPasswordField.getText();
+        String projectPath = getTrimmedText(projectPathField);
+        String devcontainerPath = getTrimmedText(devcontainerPathField);
+
+        if (!isEditDevcontainerInputComplete()) {
+            showWarning("Missing required fields",
+                    "SSH Server Address, User, Password, Project Path, and Devcontainer Path are required.");
+            return null;
+        }
+
+        ServerEndpoint endpoint;
+        try {
+            endpoint = parseServerAddress(address);
+        } catch (IllegalArgumentException e) {
+            showWarning("Invalid SSH server address", e.getMessage());
+            return null;
+        }
+
+        String serverName = workspaceName.isEmpty() ? "devcontainer-editor" : workspaceName;
+        ServerInfo server = new ServerInfo(serverName, endpoint.host(), endpoint.port(), user, password);
+        return new WorkspaceInput(serverName, server, projectPath, devcontainerPath);
+    }
+
+    private String combineRemotePath(String projectPath, String devcontainerPath) {
+        String normalizedProjectPath = projectPath.replaceAll("/+$", "");
+        String normalizedDevcontainerPath = devcontainerPath.replaceAll("^/+", "");
+        return normalizedProjectPath + "/" + normalizedDevcontainerPath;
     }
 
     private ServerEndpoint parseServerAddress(String address) {
@@ -286,6 +510,14 @@ public class DevPodController {
     }
 
     private record ServerEndpoint(String host, int port) {
+    }
+
+    private record WorkspaceInput(
+            String workspaceName,
+            ServerInfo server,
+            String projectPath,
+            String devcontainerPath
+    ) {
     }
 
     private void loadSvgIcons(Node node) {
