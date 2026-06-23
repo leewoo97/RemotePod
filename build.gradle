@@ -13,7 +13,19 @@ java {
 }
 
 application {
-    mainClass = 'com.sshmanager.MainApp'
+    mainClass = 'com.sshmanager.Launcher'
+}
+
+ext {
+    appName = 'RemoteDev'
+    installerVersion = '1.0.1'
+    wixBinCandidates = [
+            file('tools/wix314'),
+            file('C:/Program Files (x86)/WiX Toolset v3.14/bin'),
+            file('C:/Program Files/WiX Toolset v3.14/bin'),
+            file('C:/Program Files (x86)/WiX Toolset v3.11/bin'),
+            file('C:/Program Files/WiX Toolset v3.11/bin')
+    ]
 }
 
 javafx {
@@ -49,11 +61,78 @@ dependencies {
 // EXE 배포용 fat jar (모든 의존성 포함)
 jar {
     manifest {
-        attributes 'Main-Class': 'com.sshmanager.MainApp'
+        attributes 'Main-Class': application.mainClass.get()
     }
     // 모든 의존성을 하나의 jar로 합치기
     from configurations.runtimeClasspath.collect {
         it.isDirectory() ? it : zipTree(it)
     }
+    exclude 'META-INF/*.SF', 'META-INF/*.DSA', 'META-INF/*.RSA'
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.register('packageExe', Exec) {
+    group = 'distribution'
+    description = 'Build a Windows installer EXE for RemoteDev.'
+    dependsOn jar
+    outputs.upToDateWhen { false }
+
+    doFirst {
+        if (!org.gradle.internal.os.OperatingSystem.current().isWindows()) {
+            throw new GradleException('packageExe can only be run on Windows.')
+        }
+
+        def wixBinDir = wixBinCandidates.find {
+            new File(it, 'candle.exe').exists() && new File(it, 'light.exe').exists()
+        }
+        if (wixBinDir != null) {
+            environment 'PATH', "${wixBinDir.absolutePath}${File.pathSeparator}${System.getenv('PATH')}"
+        } else {
+            def checkWix = providers.exec {
+                commandLine 'cmd', '/c', 'where candle.exe && where light.exe'
+                ignoreExitValue = true
+            }.result.get()
+            if (checkWix.exitValue != 0) {
+                throw new GradleException('WiX 3.x is required. Install WiX Toolset 3.x or place candle.exe and light.exe in tools/wix314.')
+            }
+        }
+
+        delete layout.buildDirectory.dir('installer')
+    }
+
+    workingDir projectDir
+    executable 'jpackage'
+    args '--type', 'exe',
+            '--name', appName,
+            '--input', layout.buildDirectory.dir('libs').get().asFile.absolutePath,
+            '--main-jar', "${project.name}-${project.version}.jar",
+            '--main-class', application.mainClass.get(),
+            '--dest', layout.buildDirectory.dir('installer').get().asFile.absolutePath,
+            '--install-dir', appName,
+            '--win-menu',
+            '--win-shortcut',
+            '--win-shortcut-prompt',
+            '--vendor', appName,
+            '--app-version', installerVersion,
+            '--description', "${appName} SSH Manager"
+}
+
+tasks.register('copySetupExe') {
+    group = 'distribution'
+    description = 'Copy the Windows installer EXE to a clearer setup filename.'
+    dependsOn packageExe
+
+    doLast {
+        def installerDir = layout.buildDirectory.dir('installer').get().asFile
+        def installer = new File(installerDir, "${appName}-${installerVersion}.exe")
+        if (!installer.exists()) {
+            throw new GradleException("Installer was not created: ${installer}")
+        }
+
+        copy {
+            from installer
+            into installerDir
+            rename { "${appName}-Setup-${installerVersion}.exe" }
+        }
+    }
 }
