@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml" spacing="18" style="-fx-background-color: #ffffff;">
+    <padding>
+        <Insets top="26" right="22" bottom="22" left="22"/>
+    </padding>
+
+    <HBox alignment="CENTER_LEFT">
+        <VBox spacing="4">
+            <Label text="SSH Servers"
+                   style="-fx-text-fill: #111827; -fx-font-size: 18px; -fx-font-weight: 800;"/>
+            <Label text="Saved servers are available when creating a workspace."
+                   style="-fx-text-fill: #697386; -fx-font-size: 13px;"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="serversNewServerButton" id="serversNewServerButton" text="+ New Server" focusTraversable="false"
+                style="-fx-background-color: #38a169; -fx-background-radius: 6; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+    </HBox>
+
+    <StackPane VBox.vgrow="ALWAYS">
+        <VBox fx:id="emptyServerState" id="emptyServerState" alignment="TOP_CENTER" spacing="8">
+            <StackPane.margin>
+                <Insets top="70"/>
+            </StackPane.margin>
+            <Label text="No SSH servers saved yet."
+                   style="-fx-text-fill: #111827; -fx-font-size: 14px; -fx-font-weight: 700;"/>
+            <Label text="Click + New Server to add your first server."
+                   style="-fx-text-fill: #697386; -fx-font-size: 13px;"/>
+        </VBox>
+        <VBox fx:id="serverList" id="serverList" spacing="10" alignment="TOP_CENTER"/>
+    </StackPane>
+</VBox>

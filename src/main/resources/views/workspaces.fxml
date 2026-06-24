@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns:fx="http://javafx.com/fxml" style="-fx-background-color: #ffffff;">
+    <padding>
+        <Insets top="26" right="20" bottom="0" left="22"/>
+    </padding>
+
+    <HBox alignment="CENTER_LEFT">
+        <CheckBox text="Select all" focusTraversable="false"
+                  style="-fx-text-fill: #697386; -fx-font-size: 13px; -fx-font-weight: 600;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <HBox spacing="9" alignment="CENTER_RIGHT">
+            <Button text="Servers" focusTraversable="false"
+                    style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 6 10; -fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;">
+                <graphic>
+                    <ImageView fitWidth="15" fitHeight="15" preserveRatio="true">
+                        <image><Image url="@../images/png-fixed/Stack3D.png"/></image>
+                    </ImageView>
+                </graphic>
+            </Button>
+            <Button text="Status (4/4)" focusTraversable="false"
+                    style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 6 10; -fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;">
+                <graphic>
+                    <ImageView fitWidth="15" fitHeight="15" preserveRatio="true">
+                        <image><Image url="@../images/png-fixed/Status.png"/></image>
+                    </ImageView>
+                </graphic>
+            </Button>
+            <Button text="Sort by: Recently Used" focusTraversable="false"
+                    style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 6 10; -fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;"/>
+        </HBox>
+    </HBox>
+
+    <StackPane VBox.vgrow="ALWAYS">
+        <VBox fx:id="emptyWorkspaceState" id="emptyWorkspaceState" alignment="TOP_CENTER" spacing="13">
+            <StackPane.margin>
+                <Insets top="38"/>
+            </StackPane.margin>
+            <Label text="No workspaces for selection found. Click here to create one"
+                   style="-fx-text-fill: #111827; -fx-font-size: 14px;"/>
+            <Button fx:id="emptyCreateWorkspaceButton" id="emptyCreateWorkspaceButton" text="Create Workspace" focusTraversable="false"
+                    style="-fx-background-color: #eef1f5; -fx-background-radius: 5; -fx-padding: 6 10; -fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;"/>
+        </VBox>
+
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER"
+                    style="-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;">
+            <content>
+                <VBox fx:id="workspaceList" id="workspaceList" spacing="10" alignment="TOP_CENTER">
+                    <padding>
+                        <Insets top="38" bottom="20"/>
+                    </padding>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </StackPane>
+</VBox>

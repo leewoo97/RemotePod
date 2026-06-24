@@ -53,6 +53,11 @@ public class SshService {
         return execute(command, timeoutSeconds, true);
     }
 
+    public String executeCheckedJson(String command, long timeoutSeconds)
+            throws IOException {
+        return executeStreaming(command, timeoutSeconds, true, null);
+    }
+
     public String executeCheckedStreaming(String command, long timeoutSeconds, Consumer<String> outputConsumer)
             throws IOException {
         return executeStreaming(command, timeoutSeconds, true, outputConsumer);
@@ -171,7 +176,7 @@ public class SshService {
     public ServerInfo getCurrentServer() {
         return currentServer;
     }
-
+    
     private Callable<String> readStream(InputStream inputStream, Consumer<String> outputConsumer) {
         return () -> {
             StringBuilder output = new StringBuilder();
