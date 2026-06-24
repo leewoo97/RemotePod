@@ -128,6 +128,25 @@
         </VBox>
     </ScrollPane>
 
+    <ScrollPane fx:id="workspaceDetailView" id="workspaceDetailView"
+                visible="false" managed="false" fitToWidth="true"
+                hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                style="-fx-background-color: #ffffff; -fx-background: #ffffff;">
+        <VBox spacing="18" style="-fx-background-color: #ffffff;">
+            <padding>
+                <Insets top="28" right="28" bottom="28" left="28"/>
+            </padding>
+            <VBox spacing="5">
+                <Label text="Workspace Details"
+                       style="-fx-text-fill: #111827; -fx-font-size: 20px; -fx-font-weight: 800;"/>
+                <Label text="Container and SSH workspace information"
+                       style="-fx-text-fill: #697386; -fx-font-size: 13px;"/>
+            </VBox>
+            <VBox fx:id="workspaceDetailContent" id="workspaceDetailContent" spacing="0"
+                  style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 8; -fx-background-radius: 8;"/>
+        </VBox>
+    </ScrollPane>
+
     <VBox fx:id="devcontainerEditorView" id="devcontainerEditorView" visible="false" managed="false" spacing="14"
           style="-fx-background-color: #ffffff;">
         <padding><Insets top="22" right="22" bottom="18" left="22"/></padding>
