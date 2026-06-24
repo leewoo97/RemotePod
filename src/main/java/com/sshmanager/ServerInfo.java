@@ -27,6 +27,6 @@ public class ServerInfo {
 
     @Override
     public String toString() {
-        return name + " (" + user + "@" + host + ":" + port + ")";
+        return user + "@" + host + ":" + port;
     }
 }

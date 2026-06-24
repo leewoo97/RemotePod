@@ -5,8 +5,11 @@ import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
 import javafx.concurrent.Task;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Labeled;
 import javafx.scene.control.PasswordField;
@@ -21,6 +24,8 @@ import javafx.scene.web.WebView;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
 
 public class DevPodController {
@@ -33,13 +38,17 @@ public class DevPodController {
     @FXML private Label titleLabel;
     @FXML private Label backButton;
     @FXML private Node workspaceView;
+    @FXML private Node serversView;
     @FXML private Node createView;
     @FXML private Node emptyWorkspaceState;
+    @FXML private Node emptyServerState;
     @FXML private VBox workspaceList;
+    @FXML private VBox serverList;
+    @FXML private HBox workspacesNav;
+    @FXML private HBox serversNav;
+    @FXML private Label serversNavLabel;
     @FXML private TextField workspaceNameField;
-    @FXML private TextField sshServerAddressField;
-    @FXML private TextField sshUserField;
-    @FXML private PasswordField sshPasswordField;
+    @FXML private ComboBox<ServerInfo> sshServerComboBox;
     @FXML private TextField projectPathField;
     @FXML private TextField devcontainerPathField;
     @FXML private Button createWorkspaceButton;
@@ -53,8 +62,14 @@ public class DevPodController {
     @FXML private Label devcontainerEditorStatusLabel;
     @FXML private TextArea devcontainerEditorArea;
     @FXML private Button saveDevcontainerButton;
+    @FXML private Node newServerModal;
+    @FXML private TextField newServerAddressField;
+    @FXML private TextField newServerUserField;
+    @FXML private PasswordField newServerPasswordField;
 
     private final SshService sshService = new SshService();
+    private final ObservableList<ServerInfo> servers = FXCollections.observableArrayList();
+    private final Preferences serverPreferences = Preferences.userNodeForPackage(DevPodController.class).node("servers");
     private Task<String> activeCreateTask;
     private ServerInfo activeEditorServer;
     private String activeEditorRemotePath;
@@ -65,10 +80,10 @@ public class DevPodController {
         loadSvgIcons(createView);
         loadSvgIcons(consoleView);
         loadSvgIcons(devcontainerEditorView);
+        sshServerComboBox.setItems(servers);
+        loadServers();
         workspaceNameField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
-        sshServerAddressField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
-        sshUserField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
-        sshPasswordField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
+        sshServerComboBox.valueProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
         projectPathField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
         devcontainerPathField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
         updateWorkspaceActionButtonStyles();
@@ -98,6 +113,8 @@ public class DevPodController {
         cancelWorkspaceButton.setManaged(false);
         workspaceView.setVisible(false);
         workspaceView.setManaged(false);
+        serversView.setVisible(false);
+        serversView.setManaged(false);
         createView.setVisible(true);
         createView.setManaged(true);
         consoleView.setVisible(false);
@@ -107,7 +124,7 @@ public class DevPodController {
     }
 
     @FXML
-    private void showWorkspaces() {
+    public void showWorkspaces() {
         titleLabel.setText("Workspaces");
         backButton.setVisible(false);
         backButton.setManaged(false);
@@ -117,13 +134,86 @@ public class DevPodController {
         cancelWorkspaceButton.setManaged(false);
         createView.setVisible(false);
         createView.setManaged(false);
+        serversView.setVisible(false);
+        serversView.setManaged(false);
         consoleView.setVisible(false);
         consoleView.setManaged(false);
         devcontainerEditorView.setVisible(false);
         devcontainerEditorView.setManaged(false);
         workspaceView.setVisible(true);
         workspaceView.setManaged(true);
+        setActiveNavigation(false);
         sshService.disconnect();
+    }
+
+    @FXML
+    private void showServers() {
+        titleLabel.setText("Servers");
+        backButton.setVisible(false);
+        backButton.setManaged(false);
+        headerCreateButton.setVisible(false);
+        headerCreateButton.setManaged(false);
+        cancelWorkspaceButton.setVisible(false);
+        cancelWorkspaceButton.setManaged(false);
+        workspaceView.setVisible(false);
+        workspaceView.setManaged(false);
+        createView.setVisible(false);
+        createView.setManaged(false);
+        consoleView.setVisible(false);
+        consoleView.setManaged(false);
+        devcontainerEditorView.setVisible(false);
+        devcontainerEditorView.setManaged(false);
+        serversView.setVisible(true);
+        serversView.setManaged(true);
+        setActiveNavigation(true);
+    }
+
+    @FXML
+    private void showNewServerModal() {
+        newServerAddressField.clear();
+        newServerUserField.clear();
+        newServerPasswordField.clear();
+        newServerModal.setVisible(true);
+        newServerModal.setManaged(true);
+        Platform.runLater(newServerAddressField::requestFocus);
+    }
+
+    @FXML
+    private void hideNewServerModal() {
+        newServerModal.setVisible(false);
+        newServerModal.setManaged(false);
+    }
+
+    @FXML
+    private void saveNewServer() {
+        String address = getTrimmedText(newServerAddressField);
+        String user = getTrimmedText(newServerUserField);
+        String password = newServerPasswordField.getText() == null ? "" : newServerPasswordField.getText();
+        if (address.isEmpty() || user.isEmpty() || password.isEmpty()) {
+            showWarning("Missing required fields", "SSH Server Address, User, and Password are required.");
+            return;
+        }
+
+        ServerEndpoint endpoint;
+        try {
+            endpoint = parseServerAddress(address);
+        } catch (IllegalArgumentException e) {
+            showWarning("Invalid SSH server address", e.getMessage());
+            return;
+        }
+
+        ServerInfo server = new ServerInfo(
+                user + "@" + endpoint.host() + ":" + endpoint.port(),
+                endpoint.host(),
+                endpoint.port(),
+                user,
+                password
+        );
+        servers.add(server);
+        persistServers();
+        refreshServerList();
+        sshServerComboBox.getSelectionModel().select(server);
+        hideNewServerModal();
     }
 
     @FXML
@@ -322,6 +412,8 @@ public class DevPodController {
         cancelWorkspaceButton.setDisable(false);
         workspaceView.setVisible(false);
         workspaceView.setManaged(false);
+        serversView.setVisible(false);
+        serversView.setManaged(false);
         createView.setVisible(false);
         createView.setManaged(false);
         consoleView.setVisible(true);
@@ -341,6 +433,8 @@ public class DevPodController {
         cancelWorkspaceButton.setManaged(false);
         workspaceView.setVisible(false);
         workspaceView.setManaged(false);
+        serversView.setVisible(false);
+        serversView.setManaged(false);
         createView.setVisible(false);
         createView.setManaged(false);
         consoleView.setVisible(false);
@@ -386,6 +480,104 @@ public class DevPodController {
         return row;
     }
 
+    private Node createServerRow(ServerInfo server) {
+        HBox row = new HBox(14);
+        row.setMinHeight(68);
+        row.setPadding(new Insets(13, 16, 13, 16));
+        row.setStyle("-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 7; -fx-background-radius: 7;");
+
+        VBox details = new VBox(4);
+        Label name = new Label(server.getUser() + "@" + server.getHost());
+        name.setStyle("-fx-text-fill: #111827; -fx-font-size: 14px; -fx-font-weight: 800;");
+        Label address = new Label(server.getHost() + ":" + server.getPort());
+        address.setStyle("-fx-text-fill: #697386; -fx-font-size: 12px;");
+        details.getChildren().addAll(name, address);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+        Label type = new Label("SSH");
+        type.setStyle("-fx-text-fill: #38a169; -fx-font-size: 12px; -fx-font-weight: 800;");
+        row.getChildren().addAll(details, spacer, type);
+        return row;
+    }
+
+    private void refreshServerList() {
+        serverList.getChildren().clear();
+        for (ServerInfo server : servers) {
+            serverList.getChildren().add(createServerRow(server));
+        }
+        boolean empty = servers.isEmpty();
+        emptyServerState.setVisible(empty);
+        emptyServerState.setManaged(empty);
+        serverList.setVisible(!empty);
+        serverList.setManaged(!empty);
+    }
+
+    private void setActiveNavigation(boolean serversSelected) {
+        workspacesNav.setStyle(serversSelected
+                ? "-fx-cursor: hand;"
+                : "-fx-background-color: #b35ff2; -fx-background-radius: 5; -fx-cursor: hand;");
+        serversNav.setStyle(serversSelected
+                ? "-fx-background-color: #b35ff2; -fx-background-radius: 5; -fx-cursor: hand;"
+                : "-fx-cursor: hand;");
+        for (Node child : workspacesNav.getChildren()) {
+            if (child instanceof Label label) {
+                label.setStyle(serversSelected
+                        ? "-fx-text-fill: #535a67; -fx-font-size: 13px; -fx-font-weight: 500;"
+                        : "-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 500;");
+            }
+        }
+        serversNavLabel.setStyle(serversSelected
+                ? "-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 500;"
+                : "-fx-text-fill: #535a67; -fx-font-size: 13px;");
+    }
+
+    private void loadServers() {
+        int count = serverPreferences.getInt("count", 0);
+        for (int i = 0; i < count; i++) {
+            String prefix = "server." + i + ".";
+            String host = serverPreferences.get(prefix + "host", "");
+            String user = serverPreferences.get(prefix + "user", "");
+            int port = serverPreferences.getInt(prefix + "port", 22);
+            String encodedPassword = serverPreferences.get(prefix + "password", "");
+            if (!host.isEmpty() && !user.isEmpty()) {
+                String password = decodePassword(encodedPassword);
+                servers.add(new ServerInfo(user + "@" + host + ":" + port, host, port, user, password));
+            }
+        }
+        refreshServerList();
+    }
+
+    private void persistServers() {
+        try {
+            serverPreferences.clear();
+            serverPreferences.putInt("count", servers.size());
+            for (int i = 0; i < servers.size(); i++) {
+                ServerInfo server = servers.get(i);
+                String prefix = "server." + i + ".";
+                serverPreferences.put(prefix + "host", server.getHost());
+                serverPreferences.putInt(prefix + "port", server.getPort());
+                serverPreferences.put(prefix + "user", server.getUser());
+                serverPreferences.put(prefix + "password", encodePassword(server.getPassword()));
+            }
+            serverPreferences.flush();
+        } catch (Exception e) {
+            showWarning("Could not save server", e.getMessage());
+        }
+    }
+
+    private String encodePassword(String password) {
+        return Base64.getEncoder().encodeToString(password.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private String decodePassword(String encodedPassword) {
+        try {
+            return new String(Base64.getDecoder().decode(encodedPassword), StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException e) {
+            return "";
+        }
+    }
+
     private String getTrimmedText(TextField textField) {
         return textField.getText() == null ? "" : textField.getText().trim();
     }
@@ -405,64 +597,37 @@ public class DevPodController {
     }
 
     private boolean isEditDevcontainerInputComplete() {
-        return !getTrimmedText(sshServerAddressField).isEmpty()
-                && !getTrimmedText(sshUserField).isEmpty()
-                && sshPasswordField.getText() != null
-                && !sshPasswordField.getText().isEmpty()
+        return sshServerComboBox.getValue() != null
                 && !getTrimmedText(projectPathField).isEmpty()
                 && !getTrimmedText(devcontainerPathField).isEmpty();
     }
 
     private WorkspaceInput readWorkspaceInput() {
         String workspaceName = getTrimmedText(workspaceNameField);
-        String address = getTrimmedText(sshServerAddressField);
-        String user = getTrimmedText(sshUserField);
-        String password = sshPasswordField.getText() == null ? "" : sshPasswordField.getText();
         String projectPath = getTrimmedText(projectPathField);
         String devcontainerPath = getTrimmedText(devcontainerPathField);
 
         if (!isCreateWorkspaceInputComplete()) {
             showWarning("Missing required fields",
-                    "Workspace Name, SSH Server Address, User, Password, Project Path, and Devcontainer Path are required.");
+                    "Workspace Name, SSH Server, Project Path, and Devcontainer Path are required.");
             return null;
         }
-
-        ServerEndpoint endpoint;
-        try {
-            endpoint = parseServerAddress(address);
-        } catch (IllegalArgumentException e) {
-            showWarning("Invalid SSH server address", e.getMessage());
-            return null;
-        }
-
-        ServerInfo server = new ServerInfo(workspaceName, endpoint.host(), endpoint.port(), user, password);
+        ServerInfo server = sshServerComboBox.getValue();
         return new WorkspaceInput(workspaceName, server, projectPath, devcontainerPath);
     }
 
     private WorkspaceInput readEditDevcontainerInput() {
         String workspaceName = getTrimmedText(workspaceNameField);
-        String address = getTrimmedText(sshServerAddressField);
-        String user = getTrimmedText(sshUserField);
-        String password = sshPasswordField.getText() == null ? "" : sshPasswordField.getText();
         String projectPath = getTrimmedText(projectPathField);
         String devcontainerPath = getTrimmedText(devcontainerPathField);
 
         if (!isEditDevcontainerInputComplete()) {
             showWarning("Missing required fields",
-                    "SSH Server Address, User, Password, Project Path, and Devcontainer Path are required.");
+                    "SSH Server, Project Path, and Devcontainer Path are required.");
             return null;
         }
-
-        ServerEndpoint endpoint;
-        try {
-            endpoint = parseServerAddress(address);
-        } catch (IllegalArgumentException e) {
-            showWarning("Invalid SSH server address", e.getMessage());
-            return null;
-        }
-
         String serverName = workspaceName.isEmpty() ? "devcontainer-editor" : workspaceName;
-        ServerInfo server = new ServerInfo(serverName, endpoint.host(), endpoint.port(), user, password);
+        ServerInfo server = sshServerComboBox.getValue();
         return new WorkspaceInput(serverName, server, projectPath, devcontainerPath);
     }
 
