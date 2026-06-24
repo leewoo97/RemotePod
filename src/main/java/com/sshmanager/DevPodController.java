@@ -68,6 +68,7 @@ public class DevPodController {
     @FXML private PasswordField newServerPasswordField;
 
     private final SshService sshService = new SshService();
+    private final ServersController serversController = new ServersController();
     private final ObservableList<ServerInfo> servers = FXCollections.observableArrayList();
     private final Preferences serverPreferences = Preferences.userNodeForPackage(DevPodController.class).node("servers");
     private Task<String> activeCreateTask;
@@ -104,6 +105,7 @@ public class DevPodController {
 
     @FXML
     private void showCreateWorkspace() {
+        serversController.disconnectAll();
         titleLabel.setText("Create Workspace");
         backButton.setVisible(true);
         backButton.setManaged(true);
@@ -125,6 +127,7 @@ public class DevPodController {
 
     @FXML
     public void showWorkspaces() {
+        serversController.disconnectAll();
         titleLabel.setText("Workspaces");
         backButton.setVisible(false);
         backButton.setManaged(false);
@@ -166,6 +169,33 @@ public class DevPodController {
         serversView.setVisible(true);
         serversView.setManaged(true);
         setActiveNavigation(true);
+        connectToSavedServers();
+    }
+
+    private void connectToSavedServers() {
+        serversController.connectAll(servers, new ServersController.ConnectionListener() {
+            @Override
+            public void onConnected(ServerInfo server, SshService connection) {
+                handleServerConnected(server, connection);
+            }
+
+            @Override
+            public void onFailed(ServerInfo server, Exception exception) {
+                handleServerConnectionFailed(server, exception);
+            }
+        });
+    }
+
+    /**
+     * SSH connection is ready here.
+     * Add the devpod list command and result rendering in this method.
+     */
+    private void handleServerConnected(ServerInfo server, SshService connection) {
+        // TODO: Execute "devpod list" with connection and render the result.
+    }
+
+    private void handleServerConnectionFailed(ServerInfo server, Exception exception) {
+        // TODO: Render the connection failure for this server if needed.
     }
 
     @FXML

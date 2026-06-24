@@ -254,20 +254,26 @@
                                             <Label text="SSH Server" GridPane.columnIndex="0" GridPane.rowIndex="0"
                                                    style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
                                             <HBox spacing="9" GridPane.columnIndex="1" GridPane.rowIndex="0">
-                                                <ComboBox fx:id="sshServerComboBox" promptText="Select an SSH server" prefWidth="280"
+                                                <ComboBox fx:id="sshServerComboBox" promptText="Select an SSH server"
+                                                          prefWidth="280" prefHeight="36" minHeight="36" maxHeight="36"
                                                           style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 13px;"/>
                                                 <Button text="+ New Server" onAction="#showNewServerModal" focusTraversable="false"
+                                                        prefHeight="36" minHeight="36" maxHeight="36"
                                                         style="-fx-background-color: #38a169; -fx-background-radius: 6; -fx-padding: 8 12; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: 700;"/>
                                             </HBox>
 
                                             <Label text="Project Path" GridPane.columnIndex="0" GridPane.rowIndex="1"
                                                    style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
-                                            <TextField fx:id="projectPathField" text="/workspace/my-project" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="1"
+                                            <TextField fx:id="projectPathField" text="/workspace/my-project" prefWidth="390"
+                                                       prefHeight="36" minHeight="36" maxHeight="36"
+                                                       GridPane.columnIndex="1" GridPane.rowIndex="1"
                                                        style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
 
                                             <Label text="Devcontainer Path" GridPane.columnIndex="0" GridPane.rowIndex="2"
                                                    style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
-                                            <TextField fx:id="devcontainerPathField" text=".devcontainer/devcontainer.json" prefWidth="390" GridPane.columnIndex="1" GridPane.rowIndex="2"
+                                            <TextField fx:id="devcontainerPathField" text=".devcontainer/devcontainer.json" prefWidth="390"
+                                                       prefHeight="36" minHeight="36" maxHeight="36"
+                                                       GridPane.columnIndex="1" GridPane.rowIndex="2"
                                                        style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
                                         </GridPane>
                                         <Label text="RemotePod will connect to the SSH server and use the selected project path as the workspace root."
