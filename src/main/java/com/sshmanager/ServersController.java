@@ -21,8 +21,14 @@ public final class ServersController implements AutoCloseable {
     private final Map<ServerInfo, SshService> connections = new ConcurrentHashMap<>();
     private final Map<ServerInfo, Boolean> connectingServers = new ConcurrentHashMap<>();
     private final AtomicLong connectionGeneration = new AtomicLong();
+    
+    //Connection이 맺어질때 CachedThreadPool을 사용함으로서, idle Thread를 바로 삭제하지않고
+    //60초간 대기 시켰다가 그 사이 신규 요청이 들어오면 재사용한다.
     private final ExecutorService connectionExecutor = Executors.newCachedThreadPool(task -> {
+        //Thread명 : servers-page-ssh-connect
         Thread thread = new Thread(task, "servers-page-ssh-connect");
+        //메인Thread가 삭제되면 동시에 삭제되는 데몬스레드로 지정
+        //해당 설정을 하지않으면 프로그램 종료 이후에도 Zombie스레드가 발생
         thread.setDaemon(true);
         return thread;
     });

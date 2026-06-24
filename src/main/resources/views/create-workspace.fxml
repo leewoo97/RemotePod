@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane xmlns:fx="http://javafx.com/fxml">
+    <ScrollPane fx:id="createView" id="createView" visible="false" managed="false" fitToWidth="true"
+                hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
+                style="-fx-background-color: #ffffff; -fx-background: #ffffff;">
+        <VBox spacing="0" style="-fx-background-color: #ffffff;">
+            <padding>
+                <Insets top="22" right="22" bottom="0" left="22"/>
+            </padding>
+
+            <VBox spacing="10">
+                <Label text="Workspace Name"
+                       style="-fx-text-fill: #1f2430; -fx-font-size: 14px; -fx-font-weight: 700;"/>
+                <TextField fx:id="workspaceNameField" id="workspaceNameField" text="my-workspace" prefWidth="370" maxWidth="370"
+                           style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #69758b; -fx-font-size: 13px;"/>
+                <Label wrapText="true" maxWidth="560"
+                       text="This is the workspace name that RemotePod will use as the container name.&#10;&#10;If a name is already specified in your devcontainer.json, a conflict may occur. Please click &quot;Edit devcontainer.json&quot; below to modify or remove it before proceeding."
+                       style="-fx-text-fill: #4e586c; -fx-font-size: 12px;"/>
+                <VBox.margin>
+                    <Insets bottom="24"/>
+                </VBox.margin>
+            </VBox>
+
+            <BorderPane prefHeight="374"
+                        style="-fx-background-color: #f8fafc; -fx-border-color: #dce3ec; -fx-border-radius: 7; -fx-background-radius: 7;">
+                <center>
+                    <VBox alignment="CENTER" spacing="14">
+                        <Label text="Enter SSH Workspace Source"
+                               style="-fx-text-fill: #1f2430; -fx-font-size: 14px; -fx-font-weight: 700;"/>
+                        <GridPane alignment="CENTER" hgap="10" vgap="9">
+                            <Label text="SSH Server" GridPane.columnIndex="0" GridPane.rowIndex="0"
+                                   style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
+                            <HBox spacing="9" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                <ComboBox fx:id="sshServerComboBox" id="sshServerComboBox" promptText="Select an SSH server"
+                                          prefWidth="280" prefHeight="36" minHeight="36" maxHeight="36"
+                                          style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 13px;"/>
+                                <Button fx:id="createNewServerButton" id="createNewServerButton" text="+ New Server" focusTraversable="false"
+                                        prefHeight="36" minHeight="36" maxHeight="36"
+                                        style="-fx-background-color: #38a169; -fx-background-radius: 6; -fx-padding: 8 12; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: 700;"/>
+                            </HBox>
+
+                            <Label text="Project Path" GridPane.columnIndex="0" GridPane.rowIndex="1"
+                                   style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
+                            <TextField fx:id="projectPathField" id="projectPathField" text="/workspace/my-project" prefWidth="390"
+                                       prefHeight="36" minHeight="36" maxHeight="36"
+                                       GridPane.columnIndex="1" GridPane.rowIndex="1"
+                                       style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
+
+                            <Label text="Devcontainer Path" GridPane.columnIndex="0" GridPane.rowIndex="2"
+                                   style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
+                            <TextField fx:id="devcontainerPathField" id="devcontainerPathField" text=".devcontainer/devcontainer.json" prefWidth="390"
+                                       prefHeight="36" minHeight="36" maxHeight="36"
+                                       GridPane.columnIndex="1" GridPane.rowIndex="2"
+                                       style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
+                        </GridPane>
+                        <Label text="RemotePod will connect to the SSH server and use the selected project path as the workspace root."
+                               alignment="CENTER" textAlignment="CENTER" wrapText="false" maxWidth="Infinity"
+                               style="-fx-text-fill: #5f6b80; -fx-font-size: 13px;"/>
+                    </VBox>
+                </center>
+
+                <right>
+                    <VBox prefWidth="176"
+                          style="-fx-background-color: #ffffff; -fx-border-color: transparent transparent transparent #dce3ec; -fx-border-width: 0 0 0 1;">
+                        <VBox alignment="CENTER" prefHeight="72"
+                              style="-fx-border-color: transparent transparent #dce3ec transparent; -fx-border-width: 0 0 1 0;">
+                            <Label text="Or select one of our" style="-fx-text-fill: #7b8498; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+                            <Label text="quickstart examples" style="-fx-text-fill: #7b8498; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+                        </VBox>
+                        <GridPane alignment="TOP_CENTER" hgap="20" vgap="16">
+                            <padding><Insets top="20"/></padding>
+                            <Label text="PY" GridPane.columnIndex="0" GridPane.rowIndex="0" style="-fx-text-fill: #4778b5; -fx-font-size: 22px; -fx-font-weight: 800;"/>
+                            <Label text="JS" GridPane.columnIndex="1" GridPane.rowIndex="0" style="-fx-text-fill: #70a54a; -fx-font-size: 26px; -fx-font-weight: 800;"/>
+                            <Label text="GO" GridPane.columnIndex="0" GridPane.rowIndex="1" style="-fx-text-fill: #000000; -fx-font-size: 20px; -fx-font-weight: 800; -fx-font-style: italic;"/>
+                            <Label text="R" GridPane.columnIndex="1" GridPane.rowIndex="1" style="-fx-text-fill: #000000; -fx-font-size: 28px; -fx-font-weight: 800;"/>
+                            <Label text="Java" GridPane.columnIndex="0" GridPane.rowIndex="2" style="-fx-text-fill: #d06a18; -fx-font-size: 15px;"/>
+                            <Label text="php" GridPane.columnIndex="1" GridPane.rowIndex="2" style="-fx-text-fill: #000000; -fx-font-size: 24px; -fx-font-weight: 800; -fx-font-style: italic;"/>
+                            <Label text="C++" GridPane.columnIndex="0" GridPane.rowIndex="3" style="-fx-text-fill: #4a72ad; -fx-font-size: 18px; -fx-font-weight: 800;"/>
+                            <Label text="NET" GridPane.columnIndex="1" GridPane.rowIndex="3" style="-fx-text-fill: #9b37e8; -fx-font-size: 18px; -fx-font-weight: 800;"/>
+                        </GridPane>
+                    </VBox>
+                </right>
+            </BorderPane>
+
+            <GridPane hgap="64" vgap="36">
+                <padding><Insets top="22" bottom="20"/></padding>
+                <VBox spacing="10" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                    <Label text="Default IDE *" style="-fx-text-fill: #1f2430; -fx-font-size: 14px; -fx-font-weight: 700;"/>
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/none.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/vscode.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/vscodebrowser.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/intellij.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/pycharm.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/phpstorm.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/rider.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/goland.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/webstorm.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/rustrover.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/rubymine.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/clion.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/dataspell.png"/></image></ImageView>
+                        <ImageView fitWidth="34" fitHeight="34" preserveRatio="true"><image><Image url="@../icons/png-fixed/jupyter.png"/></image></ImageView>
+                    </HBox>
+                    <Label text="RemotePod will open this workspace with the selected IDE by default. You can still change your default IDE later."
+                           alignment="CENTER_LEFT" wrapText="false" maxWidth="Infinity"
+                           style="-fx-text-fill: #5f6b80; -fx-font-size: 13px;"/>
+                </VBox>
+            </GridPane>
+
+            <HBox alignment="CENTER_LEFT" prefHeight="58"
+                  style="-fx-border-color: #dce3ec transparent transparent transparent; -fx-border-width: 1 0 0 0;">
+                <Button fx:id="createWorkspaceButton" id="createWorkspaceButton" text="Create Workspace" focusTraversable="false"
+                        prefWidth="176" prefHeight="34"
+                        style="-fx-background-color: #d9a9f6; -fx-background-radius: 5; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+                <Button fx:id="editDevcontainerButton" id="editDevcontainerButton" text="Edit devcontainer.json" focusTraversable="false"
+                        prefWidth="176" prefHeight="34"
+                        style="-fx-background-color: #79b8ff; -fx-background-radius: 5; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;">
+                    <HBox.margin><Insets left="10"/></HBox.margin>
+                </Button>
+            </HBox>
+        </VBox>
+    </ScrollPane>
+
+    <VBox fx:id="devcontainerEditorView" id="devcontainerEditorView" visible="false" managed="false" spacing="14"
+          style="-fx-background-color: #ffffff;">
+        <padding><Insets top="22" right="22" bottom="18" left="22"/></padding>
+        <HBox alignment="CENTER_LEFT" spacing="10">
+            <Label text="devcontainer.json"
+                   style="-fx-text-fill: #111827; -fx-font-size: 14px; -fx-font-weight: 800;"/>
+            <Label fx:id="devcontainerEditorPathLabel" id="devcontainerEditorPathLabel"
+                   style="-fx-text-fill: #697386; -fx-font-size: 12px;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="saveDevcontainerButton" id="saveDevcontainerButton" text="Save" focusTraversable="false"
+                    style="-fx-background-color: #111827; -fx-background-radius: 5; -fx-padding: 7 16; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+        </HBox>
+        <Label fx:id="devcontainerEditorStatusLabel" id="devcontainerEditorStatusLabel"
+               style="-fx-text-fill: #5f6b80; -fx-font-size: 12px;"/>
+        <TextArea fx:id="devcontainerEditorArea" id="devcontainerEditorArea" wrapText="false" VBox.vgrow="ALWAYS"
+                  style="-fx-control-inner-background: #171923; -fx-background-color: #171923; -fx-text-fill: #ffffff; -fx-highlight-fill: #2d3748; -fx-highlight-text-fill: #ffffff; -fx-font-family: Consolas, 'Courier New', monospace; -fx-font-size: 13px; -fx-border-color: transparent; -fx-background-radius: 5;"/>
+    </VBox>
+
+    <VBox fx:id="consoleView" id="consoleView" visible="false" managed="false" spacing="22"
+          style="-fx-background-color: #ffffff;">
+        <padding><Insets top="26" right="22" bottom="0" left="22"/></padding>
+        <HBox alignment="CENTER_LEFT" prefHeight="34"
+              style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 5; -fx-background-radius: 5;">
+            <padding><Insets left="10" right="10"/></padding>
+            <ImageView fitWidth="16" fitHeight="16" preserveRatio="true">
+                <image><Image url="@../images/png-fixed/Search.png"/></image>
+            </ImageView>
+            <TextField promptText="Search..." focusTraversable="false" editable="false" HBox.hgrow="ALWAYS"
+                       style="-fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 4 8; -fx-text-fill: #697386; -fx-prompt-text-fill: #697386; -fx-font-size: 13px;"/>
+            <Label text="Aa" style="-fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;"/>
+            <Label text="ab" style="-fx-text-fill: #111827; -fx-font-size: 12px; -fx-underline: true;">
+                <HBox.margin><Insets left="16"/></HBox.margin>
+            </Label>
+        </HBox>
+        <TextArea fx:id="consoleOutputArea" id="consoleOutputArea" editable="false" wrapText="false" VBox.vgrow="ALWAYS"
+                  style="-fx-control-inner-background: #171923; -fx-background-color: #171923; -fx-text-fill: #ffffff; -fx-highlight-fill: #2d3748; -fx-highlight-text-fill: #ffffff; -fx-font-family: Consolas, 'Courier New', monospace; -fx-font-size: 13px; -fx-border-color: transparent; -fx-background-radius: 5;"/>
+    </VBox>
+</StackPane>

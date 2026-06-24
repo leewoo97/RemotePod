@@ -24,6 +24,7 @@ public class ServerInfo {
     public int getPort()        { return port; }
     public String getUser()     { return user; }
     public String getPassword() { return password; }
+    public String getInfo() {return user + "@" + host + ":" + port;}
 
     @Override
     public String toString() {

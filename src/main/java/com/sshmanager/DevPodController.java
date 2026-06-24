@@ -3,6 +3,7 @@ package com.sshmanager;
 import javafx.fxml.FXML;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.concurrent.Task;
 import javafx.collections.FXCollections;
@@ -20,13 +21,23 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.scene.web.WebView;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.List;
 import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sshmanager.dto.DevpodListDto;
+import com.sshmanager.dto.DockerInspectDto;
+import com.sshmanager.dto.WorkspaceResponseDto;
 
 public class DevPodController {
     private static final Pattern ANSI_ESCAPE_SEQUENCE = Pattern.compile("\\u001B\\[[0-?]*[ -/]*[@-~]|\\[[0-9;]*m");
@@ -39,46 +50,55 @@ public class DevPodController {
     @FXML private Label backButton;
     @FXML private Node workspaceView;
     @FXML private Node serversView;
-    @FXML private Node createView;
-    @FXML private Node emptyWorkspaceState;
-    @FXML private Node emptyServerState;
-    @FXML private VBox workspaceList;
-    @FXML private VBox serverList;
+    @FXML private Node createSection;
     @FXML private HBox workspacesNav;
     @FXML private HBox serversNav;
     @FXML private Label serversNavLabel;
-    @FXML private TextField workspaceNameField;
-    @FXML private ComboBox<ServerInfo> sshServerComboBox;
-    @FXML private TextField projectPathField;
-    @FXML private TextField devcontainerPathField;
-    @FXML private Button createWorkspaceButton;
-    @FXML private Button editDevcontainerButton;
     @FXML private Button headerCreateButton;
     @FXML private Button cancelWorkspaceButton;
-    @FXML private Node consoleView;
-    @FXML private TextArea consoleOutputArea;
-    @FXML private Node devcontainerEditorView;
-    @FXML private Label devcontainerEditorPathLabel;
-    @FXML private Label devcontainerEditorStatusLabel;
-    @FXML private TextArea devcontainerEditorArea;
-    @FXML private Button saveDevcontainerButton;
     @FXML private Node newServerModal;
-    @FXML private TextField newServerAddressField;
-    @FXML private TextField newServerUserField;
-    @FXML private PasswordField newServerPasswordField;
 
+    private Node createView;
+    private Node emptyWorkspaceState;
+    private Node emptyServerState;
+    private VBox workspaceList;
+    private VBox serverList;
+    private TextField workspaceNameField;
+    private ComboBox<ServerInfo> sshServerComboBox;
+    private TextField projectPathField;
+    private TextField devcontainerPathField;
+    private Button createWorkspaceButton;
+    private Button editDevcontainerButton;
+    private Node consoleView;
+    private TextArea consoleOutputArea;
+    private Node devcontainerEditorView;
+    private Label devcontainerEditorPathLabel;
+    private Label devcontainerEditorStatusLabel;
+    private TextArea devcontainerEditorArea;
+    private Button saveDevcontainerButton;
+    private TextField newServerAddressField;
+    private TextField newServerUserField;
+    private PasswordField newServerPasswordField;
+
+    //ssh 연결을 위한 서비스
     private final SshService sshService = new SshService();
+
+    //Json문자열을 key-value로 변환하기위한 ObjectMapper
+    private final ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ServersController serversController = new ServersController();
     private final ObservableList<ServerInfo> servers = FXCollections.observableArrayList();
     private final Preferences serverPreferences = Preferences.userNodeForPackage(DevPodController.class).node("servers");
     private Task<String> activeCreateTask;
     private ServerInfo activeEditorServer;
     private String activeEditorRemotePath;
+    private long workspaceLoadGeneration;
+    private int pendingWorkspaceLoads;
 
     @FXML
     private void initialize() {
+        bindIncludedViewControls();
         loadSvgIcons(workspaceView);
-        loadSvgIcons(createView);
+        loadSvgIcons(createSection);
         loadSvgIcons(consoleView);
         loadSvgIcons(devcontainerEditorView);
         sshServerComboBox.setItems(servers);
@@ -88,6 +108,96 @@ public class DevPodController {
         projectPathField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
         devcontainerPathField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
         updateWorkspaceActionButtonStyles();
+        loadWorkspacesFromSavedServers();
+    }
+
+    private void bindIncludedViewControls() {
+        emptyWorkspaceState = lookupRequired(workspaceView, "#emptyWorkspaceState", Node.class);
+        workspaceList = lookupRequired(workspaceView, "#workspaceList", VBox.class);
+        Button emptyCreateWorkspaceButton =
+                lookupRequired(workspaceView, "#emptyCreateWorkspaceButton", Button.class);
+
+        emptyServerState = lookupRequired(serversView, "#emptyServerState", Node.class);
+        serverList = lookupRequired(serversView, "#serverList", VBox.class);
+        Button serversNewServerButton =
+                lookupRequired(serversView, "#serversNewServerButton", Button.class);
+
+        createView = lookupRequired(createSection, "#createView", Node.class);
+        workspaceNameField = lookupRequired(createSection, "#workspaceNameField", TextField.class);
+        sshServerComboBox = lookupRequired(createSection, "#sshServerComboBox", ComboBox.class);
+        projectPathField = lookupRequired(createSection, "#projectPathField", TextField.class);
+        devcontainerPathField = lookupRequired(createSection, "#devcontainerPathField", TextField.class);
+        createWorkspaceButton = lookupRequired(createSection, "#createWorkspaceButton", Button.class);
+        editDevcontainerButton = lookupRequired(createSection, "#editDevcontainerButton", Button.class);
+        Button createNewServerButton =
+                lookupRequired(createSection, "#createNewServerButton", Button.class);
+        consoleView = lookupRequired(createSection, "#consoleView", Node.class);
+        consoleOutputArea = lookupRequired(createSection, "#consoleOutputArea", TextArea.class);
+        devcontainerEditorView = lookupRequired(createSection, "#devcontainerEditorView", Node.class);
+        devcontainerEditorPathLabel =
+                lookupRequired(createSection, "#devcontainerEditorPathLabel", Label.class);
+        devcontainerEditorStatusLabel =
+                lookupRequired(createSection, "#devcontainerEditorStatusLabel", Label.class);
+        devcontainerEditorArea =
+                lookupRequired(createSection, "#devcontainerEditorArea", TextArea.class);
+        saveDevcontainerButton =
+                lookupRequired(createSection, "#saveDevcontainerButton", Button.class);
+
+        newServerAddressField =
+                lookupRequired(newServerModal, "#newServerAddressField", TextField.class);
+        newServerUserField =
+                lookupRequired(newServerModal, "#newServerUserField", TextField.class);
+        newServerPasswordField =
+                lookupRequired(newServerModal, "#newServerPasswordField", PasswordField.class);
+        Button closeNewServerModalButton =
+                lookupRequired(newServerModal, "#closeNewServerModalButton", Button.class);
+        Button cancelNewServerButton =
+                lookupRequired(newServerModal, "#cancelNewServerButton", Button.class);
+        Button saveNewServerButton =
+                lookupRequired(newServerModal, "#saveNewServerButton", Button.class);
+
+        emptyCreateWorkspaceButton.setOnAction(event -> showCreateWorkspace());
+        serversNewServerButton.setOnAction(event -> showNewServerModal());
+        createNewServerButton.setOnAction(event -> showNewServerModal());
+        createWorkspaceButton.setOnAction(event -> createWorkspace());
+        editDevcontainerButton.setOnAction(event -> editDevcontainer());
+        saveDevcontainerButton.setOnAction(event -> saveDevcontainer());
+        closeNewServerModalButton.setOnAction(event -> hideNewServerModal());
+        cancelNewServerButton.setOnAction(event -> hideNewServerModal());
+        saveNewServerButton.setOnAction(event -> saveNewServer());
+    }
+
+    private <T extends Node> T lookupRequired(Node root, String selector, Class<T> type) {
+        String id = selector.startsWith("#") ? selector.substring(1) : selector;
+        Node node = findNodeById(root, id);
+        if (node == null) {
+            throw new IllegalStateException("Missing FXML control: " + selector);
+        }
+        return type.cast(node);
+    }
+
+    private Node findNodeById(Node node, String id) {
+        if (id.equals(node.getId())) {
+            return node;
+        }
+
+        if (node instanceof ScrollPane scrollPane && scrollPane.getContent() != null) {
+            Node match = findNodeById(scrollPane.getContent(), id);
+            if (match != null) {
+                return match;
+            }
+        }
+
+        if (node instanceof javafx.scene.Parent parent) {
+            for (Node child : parent.getChildrenUnmodifiable()) {
+                Node match = findNodeById(child, id);
+                if (match != null) {
+                    return match;
+                }
+            }
+        }
+
+        return null;
     }
 
     @FXML
@@ -105,6 +215,7 @@ public class DevPodController {
 
     @FXML
     private void showCreateWorkspace() {
+        workspaceLoadGeneration++;
         serversController.disconnectAll();
         titleLabel.setText("Create Workspace");
         backButton.setVisible(true);
@@ -117,6 +228,8 @@ public class DevPodController {
         workspaceView.setManaged(false);
         serversView.setVisible(false);
         serversView.setManaged(false);
+        createSection.setVisible(true);
+        createSection.setManaged(true);
         createView.setVisible(true);
         createView.setManaged(true);
         consoleView.setVisible(false);
@@ -127,6 +240,7 @@ public class DevPodController {
 
     @FXML
     public void showWorkspaces() {
+        workspaceLoadGeneration++;
         serversController.disconnectAll();
         titleLabel.setText("Workspaces");
         backButton.setVisible(false);
@@ -137,6 +251,8 @@ public class DevPodController {
         cancelWorkspaceButton.setManaged(false);
         createView.setVisible(false);
         createView.setManaged(false);
+        createSection.setVisible(false);
+        createSection.setManaged(false);
         serversView.setVisible(false);
         serversView.setManaged(false);
         consoleView.setVisible(false);
@@ -147,10 +263,13 @@ public class DevPodController {
         workspaceView.setManaged(true);
         setActiveNavigation(false);
         sshService.disconnect();
+        loadWorkspacesFromSavedServers();
     }
 
     @FXML
     private void showServers() {
+        workspaceLoadGeneration++;
+        serversController.disconnectAll();
         titleLabel.setText("Servers");
         backButton.setVisible(false);
         backButton.setManaged(false);
@@ -160,6 +279,8 @@ public class DevPodController {
         cancelWorkspaceButton.setManaged(false);
         workspaceView.setVisible(false);
         workspaceView.setManaged(false);
+        createSection.setVisible(false);
+        createSection.setManaged(false);
         createView.setVisible(false);
         createView.setManaged(false);
         consoleView.setVisible(false);
@@ -169,33 +290,122 @@ public class DevPodController {
         serversView.setVisible(true);
         serversView.setManaged(true);
         setActiveNavigation(true);
-        connectToSavedServers();
     }
 
-    private void connectToSavedServers() {
+    private void loadWorkspacesFromSavedServers() {
+        long generation = ++workspaceLoadGeneration;
+        workspaceList.getChildren().clear();
+        pendingWorkspaceLoads = servers.size();
+        updateWorkspaceListVisibility();
+
+        if (servers.isEmpty()) {
+            return;
+        }
+
         serversController.connectAll(servers, new ServersController.ConnectionListener() {
             @Override
             public void onConnected(ServerInfo server, SshService connection) {
-                handleServerConnected(server, connection);
+                Task<List<WorkspaceResponseDto>> task = new Task<>() {
+                    @Override
+                    protected List<WorkspaceResponseDto> call() throws Exception {
+                        return handleServerConnected(server, connection);
+                    }
+
+                    @Override
+                    protected void succeeded() {
+                        if (generation != workspaceLoadGeneration) {
+                            return;
+                        }
+                        for (WorkspaceResponseDto response : getValue()) {
+                            workspaceList.getChildren().add(createWorkspaceCard(response));
+                        }
+                        completeWorkspaceLoad();
+                    }
+
+                    @Override
+                    protected void failed() {
+                        if (generation != workspaceLoadGeneration) {
+                            return;
+                        }
+                        handleServerConnectionFailed(server, getException());
+                        completeWorkspaceLoad();
+                    }
+                };
+
+                Thread thread = new Thread(task, "workspace-list-" + server.getHost());
+                thread.setDaemon(true);
+                thread.start();
             }
 
             @Override
             public void onFailed(ServerInfo server, Exception exception) {
+                if (generation != workspaceLoadGeneration) {
+                    return;
+                }
                 handleServerConnectionFailed(server, exception);
+                completeWorkspaceLoad();
             }
         });
+    }
+
+    private void completeWorkspaceLoad() {
+        pendingWorkspaceLoads = Math.max(0, pendingWorkspaceLoads - 1);
+        updateWorkspaceListVisibility();
+    }
+
+    private void updateWorkspaceListVisibility() {
+        boolean hasWorkspaces = !workspaceList.getChildren().isEmpty();
+        boolean showEmptyState = pendingWorkspaceLoads == 0 && !hasWorkspaces;
+        emptyWorkspaceState.setVisible(showEmptyState);
+        emptyWorkspaceState.setManaged(showEmptyState);
+        workspaceList.setVisible(hasWorkspaces || pendingWorkspaceLoads > 0);
+        workspaceList.setManaged(hasWorkspaces || pendingWorkspaceLoads > 0);
     }
 
     /**
      * SSH connection is ready here.
      * Add the devpod list command and result rendering in this method.
+     * @throws IOException
      */
-    private void handleServerConnected(ServerInfo server, SshService connection) {
-        // TODO: Execute "devpod list" with connection and render the result.
+    private List<WorkspaceResponseDto> handleServerConnected(ServerInfo server, SshService connection) throws IOException {
+        List<WorkspaceResponseDto> responseList = new ArrayList<>();
+
+        String json = connection.executeCheckedJson("devpod list --output json", 30);
+        List<DevpodListDto> devpodList =
+                objectMapper.readValue(json, new TypeReference<List<DevpodListDto>>() {});
+
+        for (DevpodListDto devpod : devpodList) {
+            String dockerCommand = "docker inspect " + shellQuote(devpod.getId());
+            String dockerJson = connection.executeCheckedJson(dockerCommand, 30);
+            List<DockerInspectDto> dockerInspectList = objectMapper.readValue(
+                    dockerJson,
+                    objectMapper.getTypeFactory().constructCollectionType(List.class, DockerInspectDto.class)
+            );
+            if (dockerInspectList.isEmpty()) {
+                continue;
+            }
+
+            DockerInspectDto dockerInspect = dockerInspectList.getFirst();
+            responseList.add(WorkspaceResponseDto.builder()
+                    .workspaceName(dockerInspect.getWorkspaceName())
+                    .created(dockerInspect.getCreated())
+                    .gateway(dockerInspect.getGateway())
+                    .ipAddress(dockerInspect.getIpAddress())
+                    .mountsInfo(dockerInspect.getMountsInfo())
+                    .pid(dockerInspect.getPid())
+                    .portInfo(dockerInspect.getPortInfo())
+                    .status(dockerInspect.getStatus())
+                    .serverInfo(server.getInfo())
+                    .path(devpod.getDevContainerPath())
+                    .build());
+        }
+
+        return responseList;
     }
 
-    private void handleServerConnectionFailed(ServerInfo server, Exception exception) {
-        // TODO: Render the connection failure for this server if needed.
+    private void handleServerConnectionFailed(ServerInfo server, Throwable exception) {
+        System.err.println("Workspace load failed for " + server.getInfo() + ": "
+                + (exception == null ? "Unknown error" : exception.getMessage()));
     }
 
     @FXML
@@ -444,6 +654,8 @@ public class DevPodController {
         workspaceView.setManaged(false);
         serversView.setVisible(false);
         serversView.setManaged(false);
+        createSection.setVisible(true);
+        createSection.setManaged(true);
         createView.setVisible(false);
         createView.setManaged(false);
         consoleView.setVisible(true);
@@ -465,6 +677,8 @@ public class DevPodController {
         workspaceView.setManaged(false);
         serversView.setVisible(false);
         serversView.setManaged(false);
+        createSection.setVisible(true);
+        createSection.setManaged(true);
         createView.setVisible(false);
         createView.setManaged(false);
         consoleView.setVisible(false);
@@ -508,6 +722,65 @@ public class DevPodController {
         HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
         row.getChildren().addAll(name, type, spacer, status);
         return row;
+    }
+
+    private Node createWorkspaceCard(WorkspaceResponseDto workspace) {
+        HBox card = new HBox(18);
+        card.setAlignment(Pos.TOP_LEFT);
+        card.setMinHeight(132);
+        card.setPadding(new Insets(18, 20, 18, 20));
+        card.setStyle("-fx-background-color: #ffffff; -fx-border-color: #dce3ec;"
+                + " -fx-border-radius: 8; -fx-background-radius: 8;");
+
+        VBox details = new VBox(7);
+        Label workspaceName = new Label(displayValue(workspace.getWorkspaceName()));
+        workspaceName.setStyle("-fx-text-fill: #111827; -fx-font-size: 16px; -fx-font-weight: 800;");
+
+        Label serverInfo = createWorkspaceDetailLabel("Server", workspace.getServerInfo());
+        Label path = createWorkspaceDetailLabel("Path", workspace.getPath());
+        Label portInfo = createWorkspaceDetailLabel("Port", workspace.getPortInfo());
+        details.getChildren().addAll(workspaceName, serverInfo, path, portInfo);
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+
+        String statusText = normalizeStatus(workspace.getStatus());
+        Circle statusDot = new Circle(5, statusColor(statusText));
+        Label statusLabel = new Label(statusText);
+        statusLabel.setStyle("-fx-text-fill: #4b5563; -fx-font-size: 12px; -fx-font-weight: 700;");
+        HBox status = new HBox(7, statusDot, statusLabel);
+        status.setAlignment(Pos.CENTER_RIGHT);
+
+        card.getChildren().addAll(details, spacer, status);
+        return card;
+    }
+
+    private Label createWorkspaceDetailLabel(String title, String value) {
+        Label label = new Label(title + "  " + displayValue(value));
+        label.setWrapText(true);
+        label.setStyle("-fx-text-fill: #697386; -fx-font-size: 12px;");
+        return label;
+    }
+
+    private String displayValue(String value) {
+        return value == null || value.isBlank() ? "-" : value;
+    }
+
+    private String normalizeStatus(String status) {
+        return status == null || status.isBlank() ? "unknown" : status.trim().toLowerCase();
+    }
+
+    private Color statusColor(String status) {
+        return switch (status) {
+            case "created" -> Color.web("#3b82f6");
+            case "restarting" -> Color.web("#f59e0b");
+            case "running" -> Color.web("#22c55e");
+            case "removing" -> Color.web("#a855f7");
+            case "paused" -> Color.web("#eab308");
+            case "exited" -> Color.web("#94a3b8");
+            case "dead" -> Color.web("#ef4444");
+            default -> Color.web("#64748b");
+        };
     }
 
     private Node createServerRow(ServerInfo server) {
