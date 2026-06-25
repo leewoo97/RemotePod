@@ -16,5 +16,6 @@ public class WorkspaceResponseDto {
     private String created;
     private String status;
     private String serverInfo;
-    private String path;
+    private String projectPath;
+    private String devcontainerPath;
 }

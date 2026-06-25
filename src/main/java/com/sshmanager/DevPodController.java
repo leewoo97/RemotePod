@@ -19,6 +19,7 @@ import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -57,8 +58,11 @@ public class DevPodController {
     @FXML private Button headerCreateButton;
     @FXML private Button cancelWorkspaceButton;
     @FXML private Node newServerModal;
+    @FXML private Node workspaceActionModal;
 
     private Node createView;
+    private Node workspaceDetailView;
+    private VBox workspaceDetailContent;
     private Node emptyWorkspaceState;
     private Node emptyServerState;
     private VBox workspaceList;
@@ -79,6 +83,9 @@ public class DevPodController {
     private TextField newServerAddressField;
     private TextField newServerUserField;
     private PasswordField newServerPasswordField;
+    private Label workspaceActionTitle;
+    private Label workspaceActionMessage;
+    private Button confirmWorkspaceActionButton;
 
     //ssh 연결을 위한 서비스
     private final SshService sshService = new SshService();
@@ -93,6 +100,9 @@ public class DevPodController {
     private String activeEditorRemotePath;
     private long workspaceLoadGeneration;
     private int pendingWorkspaceLoads;
+    private WorkspaceResponseDto editingWorkspace;
+    private WorkspaceResponseDto pendingWorkspaceAction;
+    private WorkspaceAction pendingAction;
 
     @FXML
     private void initialize() {
@@ -123,6 +133,8 @@ public class DevPodController {
                 lookupRequired(serversView, "#serversNewServerButton", Button.class);
 
         createView = lookupRequired(createSection, "#createView", Node.class);
+        workspaceDetailView = lookupRequired(createSection, "#workspaceDetailView", Node.class);
+        workspaceDetailContent = lookupRequired(createSection, "#workspaceDetailContent", VBox.class);
         workspaceNameField = lookupRequired(createSection, "#workspaceNameField", TextField.class);
         sshServerComboBox = lookupRequired(createSection, "#sshServerComboBox", ComboBox.class);
         projectPathField = lookupRequired(createSection, "#projectPathField", TextField.class);
@@ -155,6 +167,16 @@ public class DevPodController {
                 lookupRequired(newServerModal, "#cancelNewServerButton", Button.class);
         Button saveNewServerButton =
                 lookupRequired(newServerModal, "#saveNewServerButton", Button.class);
+        workspaceActionTitle =
+                lookupRequired(workspaceActionModal, "#workspaceActionTitle", Label.class);
+        workspaceActionMessage =
+                lookupRequired(workspaceActionModal, "#workspaceActionMessage", Label.class);
+        confirmWorkspaceActionButton =
+                lookupRequired(workspaceActionModal, "#confirmWorkspaceActionButton", Button.class);
+        Button closeWorkspaceActionButton =
+                lookupRequired(workspaceActionModal, "#closeWorkspaceActionButton", Button.class);
+        Button cancelWorkspaceActionButton =
+                lookupRequired(workspaceActionModal, "#cancelWorkspaceActionButton", Button.class);
 
         emptyCreateWorkspaceButton.setOnAction(event -> showCreateWorkspace());
         serversNewServerButton.setOnAction(event -> showNewServerModal());
@@ -165,6 +187,9 @@ public class DevPodController {
         closeNewServerModalButton.setOnAction(event -> hideNewServerModal());
         cancelNewServerButton.setOnAction(event -> hideNewServerModal());
         saveNewServerButton.setOnAction(event -> saveNewServer());
+        closeWorkspaceActionButton.setOnAction(event -> hideWorkspaceActionModal());
+        cancelWorkspaceActionButton.setOnAction(event -> hideWorkspaceActionModal());
+        confirmWorkspaceActionButton.setOnAction(event -> confirmWorkspaceAction());
     }
 
     private <T extends Node> T lookupRequired(Node root, String selector, Class<T> type) {
@@ -206,7 +231,7 @@ public class DevPodController {
             sshService.disconnect();
             activeEditorServer = null;
             activeEditorRemotePath = null;
-            showCreateWorkspace();
+            returnToWorkspaceForm();
             return;
         }
 
@@ -217,6 +242,9 @@ public class DevPodController {
     private void showCreateWorkspace() {
         workspaceLoadGeneration++;
         serversController.disconnectAll();
+        editingWorkspace = null;
+        createWorkspaceButton.setText("Create Workspace");
+        createWorkspaceButton.setOnAction(event -> createWorkspace());
         titleLabel.setText("Create Workspace");
         backButton.setVisible(true);
         backButton.setManaged(true);
@@ -232,6 +260,8 @@ public class DevPodController {
         createSection.setManaged(true);
         createView.setVisible(true);
         createView.setManaged(true);
+        workspaceDetailView.setVisible(false);
+        workspaceDetailView.setManaged(false);
         consoleView.setVisible(false);
         consoleView.setManaged(false);
         devcontainerEditorView.setVisible(false);
@@ -251,6 +281,8 @@ public class DevPodController {
         cancelWorkspaceButton.setManaged(false);
         createView.setVisible(false);
         createView.setManaged(false);
+        workspaceDetailView.setVisible(false);
+        workspaceDetailView.setManaged(false);
         createSection.setVisible(false);
         createSection.setManaged(false);
         serversView.setVisible(false);
@@ -283,6 +315,8 @@ public class DevPodController {
         createSection.setManaged(false);
         createView.setVisible(false);
         createView.setManaged(false);
+        workspaceDetailView.setVisible(false);
+        workspaceDetailView.setManaged(false);
         consoleView.setVisible(false);
         consoleView.setManaged(false);
         devcontainerEditorView.setVisible(false);
@@ -396,7 +430,8 @@ public class DevPodController {
                     .portInfo(dockerInspect.getPortInfo())
                     .status(dockerInspect.getStatus())
                     .serverInfo(server.getInfo())
-                    .path(devpod.getDevContainerPath())
+                    .projectPath(devpod.getSource() == null ? "" : devpod.getSource().getLocalFolder())
+                    .devcontainerPath(devpod.getDevContainerPath())
                     .build());
         }
 
@@ -406,6 +441,19 @@ public class DevPodController {
     private void handleServerConnectionFailed(ServerInfo server, Throwable exception) {
         System.err.println("Workspace load failed for " + server.getInfo() + ": "
                 + (exception == null ? "Unknown error" : exception.getMessage()));
+    }
+
+    @FXML
+    private void updateWorkspace() {
+        // TODO: Implement workspace update command.
+    }
+
+    private void restartWorkspace(WorkspaceResponseDto workspace) {
+        // TODO: Implement workspace restart command.
+    }
+
+    private void deleteWorkspace(WorkspaceResponseDto workspace) {
+        // TODO: Implement workspace delete command.
     }
 
     @FXML
@@ -527,13 +575,21 @@ public class DevPodController {
                 String message = exception == null ? "Unknown error" : exception.getMessage();
                 devcontainerEditorStatusLabel.setText("Failed to load file.");
                 showWarning("Edit devcontainer.json failed", message);
-                showCreateWorkspace();
+                returnToWorkspaceForm();
             }
         };
 
         Thread thread = new Thread(task, "devcontainer-load");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private void returnToWorkspaceForm() {
+        if (editingWorkspace != null) {
+            showEditWorkspace(editingWorkspace);
+        } else {
+            showCreateWorkspace();
+        }
     }
 
     @FXML
@@ -727,32 +783,262 @@ public class DevPodController {
     private Node createWorkspaceCard(WorkspaceResponseDto workspace) {
         HBox card = new HBox(18);
         card.setAlignment(Pos.TOP_LEFT);
-        card.setMinHeight(132);
+        card.setMinHeight(164);
         card.setPadding(new Insets(18, 20, 18, 20));
         card.setStyle("-fx-background-color: #ffffff; -fx-border-color: #dce3ec;"
                 + " -fx-border-radius: 8; -fx-background-radius: 8;");
 
         VBox details = new VBox(7);
+        details.setPadding(new Insets(8, 0, 0, 0));
+        String statusText = normalizeStatus(workspace.getStatus());
+        Circle statusDot = new Circle(6, statusColor(statusText));
+        Label statusLabel = new Label(statusText);
+        statusLabel.setStyle("-fx-text-fill: #374151; -fx-font-size: 14px; -fx-font-weight: 800;");
+        HBox status = new HBox(8, statusDot, statusLabel);
+        status.setAlignment(Pos.CENTER_LEFT);
+
         Label workspaceName = new Label(displayValue(workspace.getWorkspaceName()));
         workspaceName.setStyle("-fx-text-fill: #111827; -fx-font-size: 16px; -fx-font-weight: 800;");
 
         Label serverInfo = createWorkspaceDetailLabel("Server", workspace.getServerInfo());
-        Label path = createWorkspaceDetailLabel("Path", workspace.getPath());
+        Label path = createWorkspaceDetailLabel("Path", workspace.getProjectPath());
         Label portInfo = createWorkspaceDetailLabel("Port", workspace.getPortInfo());
-        details.getChildren().addAll(workspaceName, serverInfo, path, portInfo);
+        details.getChildren().addAll(status, workspaceName, serverInfo, path, portInfo);
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
 
-        String statusText = normalizeStatus(workspace.getStatus());
-        Circle statusDot = new Circle(5, statusColor(statusText));
-        Label statusLabel = new Label(statusText);
-        statusLabel.setStyle("-fx-text-fill: #4b5563; -fx-font-size: 12px; -fx-font-weight: 700;");
-        HBox status = new HBox(7, statusDot, statusLabel);
-        status.setAlignment(Pos.CENTER_RIGHT);
+        Button detailsButton = new Button("Show Details");
+        detailsButton.setFocusTraversable(false);
+        detailsButton.setStyle("-fx-background-color: #a855f7; -fx-background-radius: 6;"
+                + " -fx-padding: 8 13; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: 700;");
+        detailsButton.setOnAction(event -> showWorkspaceDetails(workspace));
 
-        card.getChildren().addAll(details, spacer, status);
+        Button editButton = new Button("Edit");
+        editButton.setFocusTraversable(false);
+        editButton.setStyle("-fx-background-color: #38a169; -fx-background-radius: 6;"
+                + " -fx-padding: 8 18; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: 700;");
+        editButton.setOnAction(event -> showEditWorkspace(workspace));
+
+        HBox actions = new HBox(9, detailsButton, editButton);
+        actions.setAlignment(Pos.BOTTOM_RIGHT);
+
+        Button moreButton = new Button("\u22EE");
+        moreButton.setFocusTraversable(false);
+        moreButton.setMinSize(26, 26);
+        moreButton.setPrefSize(26, 26);
+        moreButton.setStyle("-fx-background-color: transparent; -fx-background-radius: 6;"
+                + " -fx-text-fill: #4b5563; -fx-font-size: 19px; -fx-font-weight: 800;"
+                + " -fx-padding: 0; -fx-cursor: hand;");
+
+        Button restartButton = createWorkspaceMenuButton("Restart", false);
+        restartButton.setOnAction(event -> showWorkspaceActionModal(workspace, WorkspaceAction.RESTART));
+        Button deleteButton = createWorkspaceMenuButton("Delete", true);
+        deleteButton.setOnAction(event -> showWorkspaceActionModal(workspace, WorkspaceAction.DELETE));
+        VBox popupMenu = new VBox(2, restartButton, deleteButton);
+        popupMenu.setVisible(false);
+        popupMenu.setManaged(false);
+        popupMenu.setMinWidth(92);
+        popupMenu.setPrefWidth(92);
+        popupMenu.setMaxWidth(92);
+        popupMenu.setPadding(new Insets(5));
+        popupMenu.setStyle("-fx-background-color: #ffffff; -fx-background-radius: 6;"
+                + " -fx-border-color: #dce3ec; -fx-border-radius: 6;"
+                + " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.16), 12, 0.1, 0, 4);");
+        moreButton.setOnAction(event -> {
+            boolean show = !popupMenu.isVisible();
+            popupMenu.setVisible(show);
+            popupMenu.setManaged(show);
+            moreButton.setStyle("-fx-background-color: " + (show ? "#eef2f6" : "transparent")
+                    + "; -fx-background-radius: 6; -fx-text-fill: #4b5563;"
+                    + " -fx-font-size: 19px; -fx-font-weight: 800;"
+                    + " -fx-padding: 0; -fx-cursor: hand;");
+            card.requestLayout();
+        });
+
+        HBox menuRow = new HBox(5, popupMenu, moreButton);
+        menuRow.setAlignment(Pos.TOP_RIGHT);
+        Region rightSpacer = new Region();
+        VBox.setVgrow(rightSpacer, javafx.scene.layout.Priority.ALWAYS);
+        VBox right = new VBox(menuRow, rightSpacer, actions);
+        right.setAlignment(Pos.TOP_RIGHT);
+        right.setMinWidth(190);
+        right.setMinHeight(128);
+        right.setMaxHeight(Double.MAX_VALUE);
+        HBox.setHgrow(right, javafx.scene.layout.Priority.NEVER);
+
+        card.getChildren().addAll(details, spacer, right);
         return card;
+    }
+
+    private Button createWorkspaceMenuButton(String text, boolean destructive) {
+        Button button = new Button(text);
+        button.setFocusTraversable(false);
+        button.setMaxWidth(Double.MAX_VALUE);
+        button.setAlignment(Pos.CENTER_LEFT);
+        button.setStyle("-fx-background-color: transparent; -fx-background-radius: 4;"
+                + " -fx-padding: 5 8; -fx-text-fill: "
+                + (destructive ? "#dc2626" : "#374151")
+                + "; -fx-font-size: 11px; -fx-font-weight: 600; -fx-cursor: hand;");
+        return button;
+    }
+
+    private void showWorkspaceActionModal(WorkspaceResponseDto workspace, WorkspaceAction action) {
+        pendingWorkspaceAction = workspace;
+        pendingAction = action;
+        boolean deleting = action == WorkspaceAction.DELETE;
+        workspaceActionTitle.setText(deleting ? "Delete Workspace" : "Restart Workspace");
+        workspaceActionMessage.setText(deleting
+                ? "Delete " + displayValue(workspace.getWorkspaceName()) + "? This action cannot be undone."
+                : "Restart " + displayValue(workspace.getWorkspaceName())
+                        + "? The workspace will be temporarily unavailable.");
+        confirmWorkspaceActionButton.setText(deleting ? "Delete" : "Restart");
+        confirmWorkspaceActionButton.setStyle("-fx-background-color: "
+                + (deleting ? "#dc2626" : "#38a169")
+                + "; -fx-background-radius: 6; -fx-padding: 8 16; -fx-text-fill: white;"
+                + " -fx-font-size: 13px; -fx-font-weight: 700;");
+        workspaceActionModal.setVisible(true);
+        workspaceActionModal.setManaged(true);
+    }
+
+    private void hideWorkspaceActionModal() {
+        workspaceActionModal.setVisible(false);
+        workspaceActionModal.setManaged(false);
+        pendingWorkspaceAction = null;
+        pendingAction = null;
+    }
+
+    private void confirmWorkspaceAction() {
+        WorkspaceResponseDto workspace = pendingWorkspaceAction;
+        WorkspaceAction action = pendingAction;
+        hideWorkspaceActionModal();
+        if (workspace == null || action == null) {
+            return;
+        }
+        if (action == WorkspaceAction.RESTART) {
+            restartWorkspace(workspace);
+        } else {
+            deleteWorkspace(workspace);
+        }
+    }
+
+    private void showWorkspaceDetails(WorkspaceResponseDto workspace) {
+        workspaceLoadGeneration++;
+        serversController.disconnectAll();
+        titleLabel.setText("Workspace Details");
+        backButton.setVisible(true);
+        backButton.setManaged(true);
+        headerCreateButton.setVisible(false);
+        headerCreateButton.setManaged(false);
+        workspaceView.setVisible(false);
+        workspaceView.setManaged(false);
+        serversView.setVisible(false);
+        serversView.setManaged(false);
+        createSection.setVisible(true);
+        createSection.setManaged(true);
+        createView.setVisible(false);
+        createView.setManaged(false);
+        consoleView.setVisible(false);
+        consoleView.setManaged(false);
+        devcontainerEditorView.setVisible(false);
+        devcontainerEditorView.setManaged(false);
+        workspaceDetailView.setVisible(true);
+        workspaceDetailView.setManaged(true);
+
+        workspaceDetailContent.getChildren().setAll(
+                createWorkspaceDetailRow("Status", normalizeStatus(workspace.getStatus()), true),
+                createWorkspaceDetailRow("Workspace Name", workspace.getWorkspaceName(), false),
+                createWorkspaceDetailRow("Server", workspace.getServerInfo(), false),
+                createWorkspaceDetailRow("Path", workspace.getProjectPath(), false),
+                createWorkspaceDetailRow("Devcontainer Path", workspace.getDevcontainerPath(), false),
+                createWorkspaceDetailRow("Port", workspace.getPortInfo(), false),
+                createWorkspaceDetailRow("IP Address", workspace.getIpAddress(), false),
+                createWorkspaceDetailRow("Gateway", workspace.getGateway(), false),
+                createWorkspaceDetailRow("PID", workspace.getPid(), false),
+                createWorkspaceDetailRow("Created", workspace.getCreated(), false),
+                createWorkspaceDetailRow("Mounts", workspace.getMountsInfo(), false)
+        );
+    }
+
+    private Node createWorkspaceDetailRow(String title, String value, boolean statusValue) {
+        HBox row = new HBox(18);
+        row.setAlignment(Pos.TOP_LEFT);
+        row.setPadding(new Insets(15, 18, 15, 18));
+        row.setStyle("-fx-border-color: transparent transparent #e5e7eb transparent;"
+                + " -fx-border-width: 0 0 1 0;");
+
+        Label titleLabel = new Label(title);
+        titleLabel.setMinWidth(145);
+        titleLabel.setStyle("-fx-text-fill: #697386; -fx-font-size: 12px; -fx-font-weight: 700;");
+
+        Node valueNode;
+        if (statusValue) {
+            String status = normalizeStatus(value);
+            Circle dot = new Circle(6, statusColor(status));
+            Label label = new Label(status);
+            label.setStyle("-fx-text-fill: #111827; -fx-font-size: 14px; -fx-font-weight: 800;");
+            HBox statusBox = new HBox(8, dot, label);
+            statusBox.setAlignment(Pos.CENTER_LEFT);
+            valueNode = statusBox;
+        } else {
+            Label label = new Label(displayValue(value));
+            label.setWrapText(true);
+            label.setStyle("-fx-text-fill: #111827; -fx-font-size: 13px;");
+            HBox.setHgrow(label, javafx.scene.layout.Priority.ALWAYS);
+            label.setMaxWidth(Double.MAX_VALUE);
+            valueNode = label;
+        }
+
+        row.getChildren().addAll(titleLabel, valueNode);
+        return row;
+    }
+
+    private void showEditWorkspace(WorkspaceResponseDto workspace) {
+        workspaceLoadGeneration++;
+        serversController.disconnectAll();
+        editingWorkspace = workspace;
+        titleLabel.setText("Edit Workspace");
+        backButton.setVisible(true);
+        backButton.setManaged(true);
+        headerCreateButton.setVisible(false);
+        headerCreateButton.setManaged(false);
+        workspaceView.setVisible(false);
+        workspaceView.setManaged(false);
+        serversView.setVisible(false);
+        serversView.setManaged(false);
+        createSection.setVisible(true);
+        createSection.setManaged(true);
+        createView.setVisible(true);
+        createView.setManaged(true);
+        workspaceDetailView.setVisible(false);
+        workspaceDetailView.setManaged(false);
+        consoleView.setVisible(false);
+        consoleView.setManaged(false);
+        devcontainerEditorView.setVisible(false);
+        devcontainerEditorView.setManaged(false);
+
+        workspaceNameField.setText(workspace.getWorkspaceName() == null ? "" : workspace.getWorkspaceName());
+        projectPathField.setText(workspace.getProjectPath() == null ? "" : workspace.getProjectPath());
+        devcontainerPathField.setText(
+                workspace.getDevcontainerPath() == null ? "" : workspace.getDevcontainerPath()
+        );
+        selectWorkspaceServer(workspace.getServerInfo());
+        createWorkspaceButton.setText("Update Workspace");
+        createWorkspaceButton.setOnAction(event -> updateWorkspace());
+        updateWorkspaceActionButtonStyles();
+    }
+
+    private void selectWorkspaceServer(String serverInfo) {
+        sshServerComboBox.getSelectionModel().clearSelection();
+        if (serverInfo == null) {
+            return;
+        }
+        for (ServerInfo server : servers) {
+            if (serverInfo.equals(server.getInfo())) {
+                sshServerComboBox.getSelectionModel().select(server);
+                return;
+            }
+        }
     }
 
     private Label createWorkspaceDetailLabel(String title, String value) {
@@ -986,6 +1272,11 @@ public class DevPodController {
             String projectPath,
             String devcontainerPath
     ) {
+    }
+
+    private enum WorkspaceAction {
+        RESTART,
+        DELETE
     }
 
     private void loadSvgIcons(Node node) {

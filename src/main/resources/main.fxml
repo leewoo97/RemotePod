@@ -154,4 +154,6 @@
 
     <fx:include fx:id="newServerModal" source="views/new-server-modal.fxml"
                 visible="false" managed="false"/>
+    <fx:include fx:id="workspaceActionModal" source="views/workspace-action-modal.fxml"
+                visible="false" managed="false"/>
 </StackPane>

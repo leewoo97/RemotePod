@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<StackPane xmlns:fx="http://javafx.com/fxml"
+           style="-fx-background-color: rgba(17, 24, 39, 0.42);">
+    <VBox maxWidth="430" maxHeight="250" spacing="14"
+          style="-fx-background-color: #ffffff; -fx-background-radius: 10; -fx-padding: 24; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.24), 24, 0.15, 0, 8);">
+        <HBox alignment="CENTER_LEFT">
+            <Label fx:id="workspaceActionTitle" id="workspaceActionTitle"
+                   style="-fx-text-fill: #111827; -fx-font-size: 19px; -fx-font-weight: 800;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Button fx:id="closeWorkspaceActionButton" id="closeWorkspaceActionButton"
+                    text="X" focusTraversable="false"
+                    style="-fx-background-color: transparent; -fx-text-fill: #697386; -fx-font-size: 15px; -fx-cursor: hand;"/>
+        </HBox>
+        <Label fx:id="workspaceActionMessage" id="workspaceActionMessage"
+               wrapText="true"
+               style="-fx-text-fill: #4e586c; -fx-font-size: 13px;"/>
+        <Region VBox.vgrow="ALWAYS"/>
+        <HBox alignment="CENTER_RIGHT" spacing="9">
+            <Button fx:id="cancelWorkspaceActionButton" id="cancelWorkspaceActionButton"
+                    text="Cancel" focusTraversable="false"
+                    style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 16; -fx-text-fill: #111827; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+            <Button fx:id="confirmWorkspaceActionButton" id="confirmWorkspaceActionButton"
+                    focusTraversable="false"
+                    style="-fx-background-color: #38a169; -fx-background-radius: 6; -fx-padding: 8 16; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+        </HBox>
+    </VBox>
+</StackPane>
