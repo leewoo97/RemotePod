@@ -42,6 +42,7 @@ import com.sshmanager.dto.ContainerGetDto;
 import com.sshmanager.dto.ContainerInfoDto;
 import com.sshmanager.dto.DevpodListDto;
 import com.sshmanager.dto.DockerInspectDto;
+import com.sshmanager.dto.RemotePodInfoDto;
 import com.sshmanager.dto.WorkspaceResponseDto;
 
 public class DevPodController {
@@ -435,6 +436,7 @@ public class DevPodController {
             }
 
             DockerInspectDto dockerInspect = dockerInspectList.getFirst();
+            RemotePodInfoDto remotePodInfo = readRemotePodInfo(connection, dockerInspect.getWorkspaceName());
             responseList.add(WorkspaceResponseDto.builder()
                     .workspaceName(dockerInspect.getWorkspaceName())
                     .created(dockerInspect.getCreated())
@@ -445,12 +447,29 @@ public class DevPodController {
                     .portInfo(dockerInspect.getPortInfo())
                     .status(dockerInspect.getStatus())
                     .serverInfo(server.getInfo())
-                    // .projectPath(devpod.getSource() == null ? "" : devpod.getSource().getLocalFolder())
-                    // .devcontainerPath(devpod.getDevContainerPath())
+                    .projectPath(remotePodInfo.getProjectPath())
+                    .devcontainerPath(remotePodInfo.getDevcontainerPath())
                     .build());
         }
 
         return responseList;
+    }
+
+    private RemotePodInfoDto readRemotePodInfo(SshService connection, String containerName) {
+        try {
+            String command = "docker cp "
+                    + shellQuote(containerName + ":/root/.remote-pod/info.json")
+                    + " - | tar -xO";
+            String infoJson = connection.executeCheckedJson(command, 30);
+            if (infoJson == null || infoJson.isBlank()) {
+                return new RemotePodInfoDto();
+            }
+            return objectMapper.readValue(infoJson, RemotePodInfoDto.class);
+        } catch (Exception exception) {
+            System.err.println("Could not read remote pod info for " + containerName + ": "
+                    + exception.getMessage());
+            return new RemotePodInfoDto();
+        }
     }
 
     private void handleServerConnectionFailed(ServerInfo server, Throwable exception) {
