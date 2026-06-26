@@ -28,14 +28,17 @@ import javafx.scene.web.WebView;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sshmanager.dto.ContainerGetDto;
 import com.sshmanager.dto.ContainerInfoDto;
 import com.sshmanager.dto.DevpodListDto;
 import com.sshmanager.dto.DockerInspectDto;
@@ -405,11 +408,22 @@ public class DevPodController {
     private List<WorkspaceResponseDto> handleServerConnected(ServerInfo server, SshService connection) throws IOException {
         List<WorkspaceResponseDto> responseList = new ArrayList<>();
 
-        String json = connection.executeCheckedJson("devpod list --output json", 30);
-        List<DevpodListDto> devpodList =
-                objectMapper.readValue(json, new TypeReference<List<DevpodListDto>>() {});
+        String json = connection.executeCheckedJson("docker ps --filter \"label=devcontainer.metadata\" --format json", 30);
+        // List<ContainerGetDto> devpodList =
+        //         objectMapper.readValue(json, new TypeReference<List<ContainerGetDto>>() {});
 
-        for (DevpodListDto devpod : devpodList) {
+        List<ContainerGetDto> devpodList = Arrays.stream(json.split("\n"))
+            .filter(line -> !line.isBlank())
+            .map(line -> {
+                try {
+                    return objectMapper.readValue(line, ContainerGetDto.class);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            })
+            .collect(Collectors.toList());
+
+        for (ContainerGetDto devpod : devpodList) {
             String dockerCommand = "docker inspect " + shellQuote(devpod.getId());
             String dockerJson = connection.executeCheckedJson(dockerCommand, 30);
             List<DockerInspectDto> dockerInspectList = objectMapper.readValue(
@@ -431,8 +445,8 @@ public class DevPodController {
                     .portInfo(dockerInspect.getPortInfo())
                     .status(dockerInspect.getStatus())
                     .serverInfo(server.getInfo())
-                    .projectPath(devpod.getSource() == null ? "" : devpod.getSource().getLocalFolder())
-                    .devcontainerPath(devpod.getDevContainerPath())
+                    // .projectPath(devpod.getSource() == null ? "" : devpod.getSource().getLocalFolder())
+                    // .devcontainerPath(devpod.getDevContainerPath())
                     .build());
         }
 

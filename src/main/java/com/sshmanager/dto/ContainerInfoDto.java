@@ -14,7 +14,7 @@ public class ContainerInfoDto {
     private String names;
 
     @JsonProperty("Labels")
-    private String labelsRaw; // 문자열로 받기
+private String labelsRaw; // 문자열로 받기
 
     // 파싱 후 원하는 값 추출
     public String getUid() {
