@@ -553,7 +553,7 @@ public class DevPodController {
                     + shellQuote(input.workspaceName())
                     + " --ide none";
 
-            runCreateWorkspaceTask(input.workspaceName(), input.server(), command);
+            runCreateWorkspaceTask(input, command);
 
 
             //데브 컨테이너 생성 성공 여부 확인
@@ -701,7 +701,9 @@ public class DevPodController {
         }
     }
 
-    private void runCreateWorkspaceTask(String workspaceName, ServerInfo server, String command) {
+    private void runCreateWorkspaceTask(WorkspaceInput input, String command) {
+        String workspaceName = input.workspaceName();
+        ServerInfo server = input.server();
         createWorkspaceButton.setDisable(true);
         createWorkspaceButton.setText("Creating...");
         showConsole(workspaceName);
@@ -716,6 +718,8 @@ public class DevPodController {
                 String output = sshService.executeCheckedStreaming(command, 3600, DevPodController.this::appendConsole);
                 appendConsole("\nVerifying workspace...\n");
                 isSuccessfullyCreated(workspaceName);
+                appendConsole("Writing remote pod info...\n");
+                writeRemotePodInfo(input);
                 appendConsole("Cleaning DevPod metadata...\n");
                 deleteDevpodMetadata();
                 return output;
@@ -820,6 +824,26 @@ public class DevPodController {
     private boolean isSameContainerNameRenameError(IOException exception) {
         String message = exception.getMessage();
         return message != null && message.contains("Renaming a container with the same name as its current name");
+    }
+
+    private void writeRemotePodInfo(WorkspaceInput input) throws IOException {
+        var info = objectMapper.createObjectNode();
+        info.put("workspaceName", input.workspaceName());
+        info.put("sshServerInfo", input.server().getInfo());
+        info.put("projectPath", input.projectPath());
+        info.put("devcontainerPath", input.devcontainerPath());
+
+        String json = objectMapper.writeValueAsString(info);
+        String encodedJson = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+        String script = "mkdir -p ~/.remote-pod && printf %s "
+                + shellQuote(encodedJson)
+                + " | base64 -d > ~/.remote-pod/info.json";
+        String command = "docker exec "
+                + shellQuote(input.workspaceName())
+                + " bash -lc "
+                + shellQuote(script);
+
+        sshService.executeChecked(command, 30);
     }
 
     private void showConsole(String workspaceName) {
