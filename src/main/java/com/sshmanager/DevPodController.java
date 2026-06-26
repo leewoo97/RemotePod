@@ -69,9 +69,12 @@ public class DevPodController {
     private Node workspaceDetailView;
     private VBox workspaceDetailContent;
     private Node emptyWorkspaceState;
+    private Node workspaceLoadingState;
     private Node emptyServerState;
     private VBox workspaceList;
     private VBox serverList;
+    private ComboBox<String> workspaceServerFilterBox;
+    private ComboBox<String> workspaceStatusFilterBox;
     private TextField workspaceNameField;
     private ComboBox<ServerInfo> sshServerComboBox;
     private TextField projectPathField;
@@ -100,6 +103,7 @@ public class DevPodController {
     private final ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ServersController serversController = new ServersController();
     private final ObservableList<ServerInfo> servers = FXCollections.observableArrayList();
+    private final List<WorkspaceResponseDto> loadedWorkspaces = new ArrayList<>();
     private final Preferences serverPreferences = Preferences.userNodeForPackage(DevPodController.class).node("servers");
     private Task<String> activeCreateTask;
     private ServerInfo activeEditorServer;
@@ -120,6 +124,7 @@ public class DevPodController {
         loadSvgIcons(devcontainerEditorView);
         sshServerComboBox.setItems(servers);
         loadServers();
+        updateWorkspaceServerFilterOptions();
         workspaceNameField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
         sshServerComboBox.valueProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
         projectPathField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
@@ -130,7 +135,10 @@ public class DevPodController {
 
     private void bindIncludedViewControls() {
         emptyWorkspaceState = lookupRequired(workspaceView, "#emptyWorkspaceState", Node.class);
+        workspaceLoadingState = lookupRequired(workspaceView, "#workspaceLoadingState", Node.class);
         workspaceList = lookupRequired(workspaceView, "#workspaceList", VBox.class);
+        workspaceServerFilterBox = lookupRequired(workspaceView, "#workspaceServerFilterBox", ComboBox.class);
+        workspaceStatusFilterBox = lookupRequired(workspaceView, "#workspaceStatusFilterBox", ComboBox.class);
         Button emptyCreateWorkspaceButton =
                 lookupRequired(workspaceView, "#emptyCreateWorkspaceButton", Button.class);
 
@@ -186,6 +194,12 @@ public class DevPodController {
                 lookupRequired(workspaceActionModal, "#cancelWorkspaceActionButton", Button.class);
 
         emptyCreateWorkspaceButton.setOnAction(event -> showCreateWorkspace());
+        workspaceServerFilterBox.setOnAction(event -> applyWorkspaceFilters());
+        workspaceStatusFilterBox.setItems(FXCollections.observableArrayList(
+                "All", "Running", "Exited", "Created", "Restarting", "Removing", "Paused", "Dead"
+        ));
+        workspaceStatusFilterBox.getSelectionModel().select("All");
+        workspaceStatusFilterBox.setOnAction(event -> applyWorkspaceFilters());
         serversNewServerButton.setOnAction(event -> showNewServerModal());
         createNewServerButton.setOnAction(event -> showNewServerModal());
         createWorkspaceButton.setOnAction(event -> createWorkspace());
@@ -335,8 +349,10 @@ public class DevPodController {
 
     private void loadWorkspacesFromSavedServers() {
         long generation = ++workspaceLoadGeneration;
+        loadedWorkspaces.clear();
         workspaceList.getChildren().clear();
         pendingWorkspaceLoads = servers.size();
+        updateWorkspaceServerFilterOptions();
         updateWorkspaceListVisibility();
 
         if (servers.isEmpty()) {
@@ -357,9 +373,8 @@ public class DevPodController {
                         if (generation != workspaceLoadGeneration) {
                             return;
                         }
-                        for (WorkspaceResponseDto response : getValue()) {
-                            workspaceList.getChildren().add(createWorkspaceCard(response));
-                        }
+                        loadedWorkspaces.addAll(getValue());
+                        applyWorkspaceFilters();
                         completeWorkspaceLoad();
                     }
 
@@ -399,8 +414,58 @@ public class DevPodController {
         boolean showEmptyState = pendingWorkspaceLoads == 0 && !hasWorkspaces;
         emptyWorkspaceState.setVisible(showEmptyState);
         emptyWorkspaceState.setManaged(showEmptyState);
-        workspaceList.setVisible(hasWorkspaces || pendingWorkspaceLoads > 0);
-        workspaceList.setManaged(hasWorkspaces || pendingWorkspaceLoads > 0);
+        workspaceList.setVisible(hasWorkspaces);
+        workspaceList.setManaged(hasWorkspaces);
+        workspaceLoadingState.setVisible(pendingWorkspaceLoads > 0);
+        workspaceLoadingState.setManaged(pendingWorkspaceLoads > 0);
+    }
+
+    private void updateWorkspaceServerFilterOptions() {
+        if (workspaceServerFilterBox == null) {
+            return;
+        }
+
+        String selectedServer = workspaceServerFilterBox.getValue();
+        List<String> serverOptions = new ArrayList<>();
+        serverOptions.add("All");
+        for (ServerInfo server : servers) {
+            String serverInfo = server.getInfo();
+            if (!serverOptions.contains(serverInfo)) {
+                serverOptions.add(serverInfo);
+            }
+        }
+
+        workspaceServerFilterBox.setItems(FXCollections.observableArrayList(serverOptions));
+        if (selectedServer != null && serverOptions.contains(selectedServer)) {
+            workspaceServerFilterBox.getSelectionModel().select(selectedServer);
+        } else {
+            workspaceServerFilterBox.getSelectionModel().select("All");
+        }
+    }
+
+    private void applyWorkspaceFilters() {
+        if (workspaceList == null) {
+            return;
+        }
+
+        String selectedServer = workspaceServerFilterBox == null ? "All" : workspaceServerFilterBox.getValue();
+        String selectedStatus = workspaceStatusFilterBox == null ? "All" : workspaceStatusFilterBox.getValue();
+        workspaceList.getChildren().clear();
+
+        for (WorkspaceResponseDto workspace : loadedWorkspaces) {
+            boolean serverMatches = selectedServer == null
+                    || "All".equals(selectedServer)
+                    || selectedServer.equals(workspace.getServerInfo());
+            boolean statusMatches = selectedStatus == null
+                    || "All".equals(selectedStatus)
+                    || normalizeStatus(selectedStatus).equals(normalizeStatus(workspace.getStatus()));
+
+            if (serverMatches && statusMatches) {
+                workspaceList.getChildren().add(createWorkspaceCard(workspace));
+            }
+        }
+
+        updateWorkspaceListVisibility();
     }
 
     /**
@@ -651,6 +716,7 @@ public class DevPodController {
         servers.add(server);
         persistServers();
         refreshServerList();
+        updateWorkspaceServerFilterOptions();
         sshServerComboBox.getSelectionModel().select(server);
         hideNewServerModal();
     }
