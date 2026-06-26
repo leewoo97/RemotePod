@@ -269,8 +269,8 @@ public class DevPodController {
         titleLabel.setText("Create Workspace");
         backButton.setVisible(true);
         backButton.setManaged(true);
-        headerCreateButton.setVisible(true);
-        headerCreateButton.setManaged(true);
+        headerCreateButton.setVisible(false);
+        headerCreateButton.setManaged(false);
         cancelWorkspaceButton.setVisible(false);
         cancelWorkspaceButton.setManaged(false);
         workspaceView.setVisible(false);
@@ -1122,7 +1122,7 @@ public class DevPodController {
         Label type = new Label("SSH");
         type.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 13px; -fx-font-weight: 700;");
 
-        Label status = new Label(statusText);
+        Label status = new Label(formatStatus(statusText));
         status.setStyle("-fx-text-fill: #6b7280; -fx-font-size: 13px; -fx-font-weight: 700;");
 
         Region spacer = new Region();
@@ -1143,7 +1143,7 @@ public class DevPodController {
         details.setPadding(new Insets(8, 0, 0, 0));
         String statusText = normalizeStatus(workspace.getStatus());
         Circle statusDot = new Circle(6, statusColor(statusText));
-        Label statusLabel = new Label(statusText);
+        Label statusLabel = new Label(formatStatus(statusText));
         statusLabel.setStyle("-fx-text-fill: #374151; -fx-font-size: 14px; -fx-font-weight: 800;");
         HBox status = new HBox(8, statusDot, statusLabel);
         status.setAlignment(Pos.CENTER_LEFT);
@@ -1336,7 +1336,7 @@ public class DevPodController {
         workspaceDetailView.setManaged(true);
 
         workspaceDetailContent.getChildren().setAll(
-                createWorkspaceDetailRow("Status", normalizeStatus(workspace.getStatus()), true),
+                createWorkspaceDetailRow("Status", formatStatus(workspace.getStatus()), true),
                 createWorkspaceDetailRow("Workspace Name", workspace.getWorkspaceName(), false),
                 createWorkspaceDetailRow("Server", workspace.getServerInfo(), false),
                 createWorkspaceDetailRow("Path", workspace.getProjectPath(), false),
@@ -1365,7 +1365,7 @@ public class DevPodController {
         if (statusValue) {
             String status = normalizeStatus(value);
             Circle dot = new Circle(6, statusColor(status));
-            Label label = new Label(status);
+            Label label = new Label(formatStatus(status));
             label.setStyle("-fx-text-fill: #111827; -fx-font-size: 14px; -fx-font-weight: 800;");
             HBox statusBox = new HBox(8, dot, label);
             statusBox.setAlignment(Pos.CENTER_LEFT);
@@ -1444,6 +1444,11 @@ public class DevPodController {
 
     private String normalizeStatus(String status) {
         return status == null || status.isBlank() ? "unknown" : status.trim().toLowerCase();
+    }
+
+    private String formatStatus(String status) {
+        String normalizedStatus = normalizeStatus(status);
+        return normalizedStatus.substring(0, 1).toUpperCase() + normalizedStatus.substring(1);
     }
 
     private Color statusColor(String status) {
