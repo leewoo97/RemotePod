@@ -10,7 +10,6 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Labeled;
@@ -92,6 +91,7 @@ public class DevPodController {
     private Label workspaceActionTitle;
     private Label workspaceActionMessage;
     private Button confirmWorkspaceActionButton;
+    private Button cancelWorkspaceActionButton;
 
     //ssh 연결을 위한 서비스
     private final SshService sshService = new SshService();
@@ -108,6 +108,7 @@ public class DevPodController {
     private int pendingWorkspaceLoads;
     private WorkspaceResponseDto editingWorkspace;
     private WorkspaceResponseDto pendingWorkspaceAction;
+    private WorkspaceInput pendingUpdateInput;
     private WorkspaceAction pendingAction;
 
     @FXML
@@ -181,7 +182,7 @@ public class DevPodController {
                 lookupRequired(workspaceActionModal, "#confirmWorkspaceActionButton", Button.class);
         Button closeWorkspaceActionButton =
                 lookupRequired(workspaceActionModal, "#closeWorkspaceActionButton", Button.class);
-        Button cancelWorkspaceActionButton =
+        cancelWorkspaceActionButton =
                 lookupRequired(workspaceActionModal, "#cancelWorkspaceActionButton", Button.class);
 
         emptyCreateWorkspaceButton.setOnAction(event -> showCreateWorkspace());
@@ -491,10 +492,10 @@ public class DevPodController {
             return;
         }
 
-        if (!confirmWorkspaceUpdate()) {
-            return;
-        }
+        showUpdateWorkspaceModal(input);
+    }
 
+    private void performUpdateWorkspace(WorkspaceInput input) {
         String originalWorkspaceName = editingWorkspace.getWorkspaceName();
         ServerInfo originalServer = findServerByInfo(editingWorkspace.getServerInfo());
         if (originalServer == null) {
@@ -522,14 +523,6 @@ public class DevPodController {
         }
     }
 
-    private boolean confirmWorkspaceUpdate() {
-        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-        alert.setTitle("Update Workspace");
-        alert.setHeaderText(null);
-        alert.setContentText("The existing workspace will be completely deleted and rebuilt as a new workspace.");
-        return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
-    }
-
     private ServerInfo findServerByInfo(String serverInfo) {
         if (serverInfo == null) {
             return null;
@@ -555,7 +548,44 @@ public class DevPodController {
     }
 
     private void restartWorkspace(WorkspaceResponseDto workspace) {
-        // TODO: Implement workspace restart command.
+        if (workspace.getProjectPath() == null || workspace.getProjectPath().isBlank()
+                || workspace.getDevcontainerPath() == null || workspace.getDevcontainerPath().isBlank()) {
+            showWorkspaceNoticeModal(
+                    "Cannot Restart Workspace",
+                    "Project Path or Devcontainer Path is missing. Use Edit to configure the workspace first."
+            );
+            return;
+        }
+
+        ServerInfo server = findServerByInfo(workspace.getServerInfo());
+        if (server == null) {
+            showWorkspaceNoticeModal(
+                    "Cannot Restart Workspace",
+                    "Could not find the SSH server for this workspace."
+            );
+            return;
+        }
+
+        WorkspaceInput input = new WorkspaceInput(
+                workspace.getWorkspaceName(),
+                server,
+                workspace.getProjectPath(),
+                workspace.getDevcontainerPath()
+        );
+        try {
+            deleteDevpodMetadata(server);
+            removeWorkspaceContainer(workspace.getWorkspaceName(), server);
+            String command = "devpod up "
+                    + shellQuote(input.projectPath())
+                    + " --devcontainer-path "
+                    + shellQuote(input.devcontainerPath())
+                    + " --id "
+                    + shellQuote(input.workspaceName())
+                    + " --ide none";
+            runCreateWorkspaceTask(input, command);
+        } catch (IllegalArgumentException e) {
+            showWarning("Restart Workspace failed", e.getMessage());
+        }
     }
 
     private void deleteWorkspace(WorkspaceResponseDto workspace) {
@@ -1125,6 +1155,7 @@ public class DevPodController {
 
     private void showWorkspaceActionModal(WorkspaceResponseDto workspace, WorkspaceAction action) {
         pendingWorkspaceAction = workspace;
+        pendingUpdateInput = null;
         pendingAction = action;
         boolean deleting = action == WorkspaceAction.DELETE;
         workspaceActionTitle.setText(deleting ? "Delete Workspace" : "Restart Workspace");
@@ -1137,6 +1168,38 @@ public class DevPodController {
                 + (deleting ? "#dc2626" : "#38a169")
                 + "; -fx-background-radius: 6; -fx-padding: 8 16; -fx-text-fill: white;"
                 + " -fx-font-size: 13px; -fx-font-weight: 700;");
+        cancelWorkspaceActionButton.setVisible(true);
+        cancelWorkspaceActionButton.setManaged(true);
+        workspaceActionModal.setVisible(true);
+        workspaceActionModal.setManaged(true);
+    }
+
+    private void showUpdateWorkspaceModal(WorkspaceInput input) {
+        pendingWorkspaceAction = null;
+        pendingUpdateInput = input;
+        pendingAction = WorkspaceAction.UPDATE;
+        workspaceActionTitle.setText("Update Workspace");
+        workspaceActionMessage.setText("The existing workspace will be completely deleted and rebuilt as a new workspace.");
+        confirmWorkspaceActionButton.setText("Update");
+        confirmWorkspaceActionButton.setStyle("-fx-background-color: #38a169; -fx-background-radius: 6;"
+                + " -fx-padding: 8 16; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;");
+        cancelWorkspaceActionButton.setVisible(true);
+        cancelWorkspaceActionButton.setManaged(true);
+        workspaceActionModal.setVisible(true);
+        workspaceActionModal.setManaged(true);
+    }
+
+    private void showWorkspaceNoticeModal(String title, String message) {
+        pendingWorkspaceAction = null;
+        pendingUpdateInput = null;
+        pendingAction = WorkspaceAction.NOTICE;
+        workspaceActionTitle.setText(title);
+        workspaceActionMessage.setText(message);
+        confirmWorkspaceActionButton.setText("OK");
+        confirmWorkspaceActionButton.setStyle("-fx-background-color: #38a169; -fx-background-radius: 6;"
+                + " -fx-padding: 8 16; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;");
+        cancelWorkspaceActionButton.setVisible(false);
+        cancelWorkspaceActionButton.setManaged(false);
         workspaceActionModal.setVisible(true);
         workspaceActionModal.setManaged(true);
     }
@@ -1145,19 +1208,25 @@ public class DevPodController {
         workspaceActionModal.setVisible(false);
         workspaceActionModal.setManaged(false);
         pendingWorkspaceAction = null;
+        pendingUpdateInput = null;
         pendingAction = null;
     }
 
     private void confirmWorkspaceAction() {
         WorkspaceResponseDto workspace = pendingWorkspaceAction;
+        WorkspaceInput updateInput = pendingUpdateInput;
         WorkspaceAction action = pendingAction;
         hideWorkspaceActionModal();
-        if (workspace == null || action == null) {
+        if (action == null || action == WorkspaceAction.NOTICE) {
             return;
         }
-        if (action == WorkspaceAction.RESTART) {
+        if (action == WorkspaceAction.UPDATE) {
+            if (updateInput != null) {
+                performUpdateWorkspace(updateInput);
+            }
+        } else if (action == WorkspaceAction.RESTART && workspace != null) {
             restartWorkspace(workspace);
-        } else {
+        } else if (action == WorkspaceAction.DELETE && workspace != null) {
             deleteWorkspace(workspace);
         }
     }
@@ -1515,8 +1584,10 @@ public class DevPodController {
     }
 
     private enum WorkspaceAction {
+        UPDATE,
         RESTART,
-        DELETE
+        DELETE,
+        NOTICE
     }
 
     private void loadSvgIcons(Node node) {
