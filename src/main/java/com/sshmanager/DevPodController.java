@@ -780,16 +780,32 @@ public class DevPodController {
             System.out.println("Container Info: " + containerInfoDto.toString());
 
             if (containerInfoDto != null &&(devpodInfo.getUid().equals(containerInfoDto.getUid()))) {
-                sshService.executeChecked(
-                        "docker rename " + shellQuote(containerInfoDto.getId()) + " " + shellQuote(workspaceName),
-                        30
-                );
+                if (workspaceName.equals(containerInfoDto.getNames())) {
+                    appendConsole("Container already has the target name. Skipping rename.\n");
+                } else {
+                    try {
+                        sshService.executeChecked(
+                                "docker rename " + shellQuote(containerInfoDto.getId()) + " " + shellQuote(workspaceName),
+                                30
+                        );
+                    } catch (IOException exception) {
+                        if (!isSameContainerNameRenameError(exception)) {
+                            throw exception;
+                        }
+                        appendConsole("Container already has the target name. Skipping rename.\n");
+                    }
+                }
             } else {
                 throw new IllegalArgumentException("Workspace creation failed: container not found.");
             }
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to verify workspace creation: " + e.getMessage(), e);
         }
+    }
+
+    private boolean isSameContainerNameRenameError(IOException exception) {
+        String message = exception.getMessage();
+        return message != null && message.contains("Renaming a container with the same name as its current name");
     }
 
     private void showConsole(String workspaceName) {

@@ -10,6 +10,9 @@ public class ContainerInfoDto {
     @JsonProperty("ID")
     private String id;
 
+    @JsonProperty("Names")
+    private String names;
+
     @JsonProperty("Labels")
     private String labelsRaw; // 문자열로 받기
 
