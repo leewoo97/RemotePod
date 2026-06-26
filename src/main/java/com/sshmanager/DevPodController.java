@@ -517,19 +517,17 @@ public class DevPodController {
 
     @FXML
     private void createWorkspace() {
-        try{
+        try {
             WorkspaceInput input = readWorkspaceInput();
             if (input == null) {
                 return;
             }
 
-            System.out.println("1");
             //devpod Metadata삭제
-            // deleteDevpodMetadata(input.server());
+            deleteDevpodMetadata(input.server());
 
             //이름 검증
             //docker ps 명령을 입력했을때 해당 이름이 이미 존재한다면 예외처리
-            System.out.println("2");
             isExistedName(input.workspaceName(), input.server());
 
             //데브 컨테이너 생성
@@ -541,19 +539,14 @@ public class DevPodController {
                     + shellQuote(input.workspaceName())
                     + " --ide none";
 
-            System.out.println("3");
             runCreateWorkspaceTask(input.workspaceName(), input.server(), command);
 
 
             //데브 컨테이너 생성 성공 여부 확인
-            System.out.println("4");
-            isSuccessfullyCreated(input.workspaceName(), input.server());
 
             //devpod Metadata삭제
-            System.out.println("5");
-            deleteDevpodMetadata(input.server());
 
-        }catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException e) {
             showWarning("Create Workspace failed", e.getMessage());
         }
     }
@@ -673,6 +666,11 @@ public class DevPodController {
         }
     }
 
+    private void deleteDevpodMetadata() throws IOException {
+        String command = "rm -rf ~/.devpod/contexts/default/workspaces/*";
+        sshService.executeChecked(command, 30);
+    }
+
     private void isExistedName(String workspaceName, ServerInfo server) {
         //이미 해당 이름을 가진 컨테이너가 존재하는지 확인하기 위해 docker ps 명령어를 사용
         String command = "docker ps -a --filter \"name=^" + workspaceName + "$\" --format json";
@@ -701,7 +699,12 @@ public class DevPodController {
                 sshService.connect(server);
                 appendConsole("Connected.\n");
                 appendConsole("$ " + command + "\n\n");
-                return sshService.executeCheckedStreaming(command, 3600, DevPodController.this::appendConsole);
+                String output = sshService.executeCheckedStreaming(command, 3600, DevPodController.this::appendConsole);
+                appendConsole("\nVerifying workspace...\n");
+                isSuccessfullyCreated(workspaceName);
+                appendConsole("Cleaning DevPod metadata...\n");
+                deleteDevpodMetadata();
+                return output;
             }
 
             @Override
@@ -752,36 +755,40 @@ public class DevPodController {
         thread.start();
     }
 
-    private void isSuccessfullyCreated(String workspaceName, ServerInfo server) {
+    private void isSuccessfullyCreated(String workspaceName) {
 
         try {
-            System.out.println("here1");
-            sshService.connect(server);
-            System.out.println("here2");
-        
             String json = sshService.executeCheckedJson("devpod list --output json", 30);
-
+            System.out.println("1");
             DevpodListDto devpodInfo =
                     objectMapper.readValue(json, new TypeReference<List<DevpodListDto>>() {}).get(0);
-            
-            String containerInfo = sshService.executeCheckedJson(
-                "docker ps -a --filter \"label=dev.containers.id=" + devpodInfo.getUid() + "\" --format '{\"id\": \"{{.ID}}\", \"names\": \"{{.Names}}\", \"uid\": \"{{.Label \\\"dev.containers.id\\\"}}\"}'", 
-                30
+            System.out.println("2");
+            String containerJson = sshService.executeCheckedJson(
+                    "docker ps -a --filter "
+                            + shellQuote("label=dev.containers.id=" + devpodInfo.getUid())
+                            + " --format json",
+                    30
             );
-
+            System.out.println("3");
+            System.out.println("docker ps -a --filter "
+                        + shellQuote("label=dev.containers.id=" + devpodInfo.getUid())
+                        + " --format json");
+            System.out.println("containerJson: " + containerJson);
             ContainerInfoDto containerInfoDto =
-                    objectMapper.readValue(containerInfo, new TypeReference<List<ContainerInfoDto>>() {}).get(0);
-            
+                    objectMapper.readValue(containerJson, ContainerInfoDto.class);
 
-            if(containerInfoDto != null) {
-                sshService.executeCheckedJson("docker rename " + containerInfoDto.getId() + " " + workspaceName, 30);
+            System.out.println("Container Info: " + containerInfoDto.toString());
+
+            if (containerInfoDto != null &&(devpodInfo.getUid().equals(containerInfoDto.getUid()))) {
+                sshService.executeChecked(
+                        "docker rename " + shellQuote(containerInfoDto.getId()) + " " + shellQuote(workspaceName),
+                        30
+                );
             } else {
                 throw new IllegalArgumentException("Workspace creation failed: container not found.");
             }
         } catch (Exception e) {
             throw new IllegalArgumentException("Failed to verify workspace creation: " + e.getMessage(), e);
-        } finally {
-            sshService.disconnect();
         }
     }
 
