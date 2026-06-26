@@ -28,16 +28,21 @@ import javafx.scene.web.WebView;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
 import java.util.prefs.Preferences;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sshmanager.dto.ContainerGetDto;
+import com.sshmanager.dto.ContainerInfoDto;
 import com.sshmanager.dto.DevpodListDto;
 import com.sshmanager.dto.DockerInspectDto;
+import com.sshmanager.dto.RemotePodInfoDto;
 import com.sshmanager.dto.WorkspaceResponseDto;
 
 public class DevPodController {
@@ -64,9 +69,12 @@ public class DevPodController {
     private Node workspaceDetailView;
     private VBox workspaceDetailContent;
     private Node emptyWorkspaceState;
+    private Node workspaceLoadingState;
     private Node emptyServerState;
     private VBox workspaceList;
     private VBox serverList;
+    private ComboBox<String> workspaceServerFilterBox;
+    private ComboBox<String> workspaceStatusFilterBox;
     private TextField workspaceNameField;
     private ComboBox<ServerInfo> sshServerComboBox;
     private TextField projectPathField;
@@ -86,6 +94,7 @@ public class DevPodController {
     private Label workspaceActionTitle;
     private Label workspaceActionMessage;
     private Button confirmWorkspaceActionButton;
+    private Button cancelWorkspaceActionButton;
 
     //ssh 연결을 위한 서비스
     private final SshService sshService = new SshService();
@@ -94,6 +103,7 @@ public class DevPodController {
     private final ObjectMapper objectMapper = new ObjectMapper().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     private final ServersController serversController = new ServersController();
     private final ObservableList<ServerInfo> servers = FXCollections.observableArrayList();
+    private final List<WorkspaceResponseDto> loadedWorkspaces = new ArrayList<>();
     private final Preferences serverPreferences = Preferences.userNodeForPackage(DevPodController.class).node("servers");
     private Task<String> activeCreateTask;
     private ServerInfo activeEditorServer;
@@ -102,6 +112,7 @@ public class DevPodController {
     private int pendingWorkspaceLoads;
     private WorkspaceResponseDto editingWorkspace;
     private WorkspaceResponseDto pendingWorkspaceAction;
+    private WorkspaceInput pendingUpdateInput;
     private WorkspaceAction pendingAction;
 
     @FXML
@@ -113,6 +124,7 @@ public class DevPodController {
         loadSvgIcons(devcontainerEditorView);
         sshServerComboBox.setItems(servers);
         loadServers();
+        updateWorkspaceServerFilterOptions();
         workspaceNameField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
         sshServerComboBox.valueProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
         projectPathField.textProperty().addListener((observable, oldValue, newValue) -> updateWorkspaceActionButtonStyles());
@@ -123,7 +135,10 @@ public class DevPodController {
 
     private void bindIncludedViewControls() {
         emptyWorkspaceState = lookupRequired(workspaceView, "#emptyWorkspaceState", Node.class);
+        workspaceLoadingState = lookupRequired(workspaceView, "#workspaceLoadingState", Node.class);
         workspaceList = lookupRequired(workspaceView, "#workspaceList", VBox.class);
+        workspaceServerFilterBox = lookupRequired(workspaceView, "#workspaceServerFilterBox", ComboBox.class);
+        workspaceStatusFilterBox = lookupRequired(workspaceView, "#workspaceStatusFilterBox", ComboBox.class);
         Button emptyCreateWorkspaceButton =
                 lookupRequired(workspaceView, "#emptyCreateWorkspaceButton", Button.class);
 
@@ -175,10 +190,16 @@ public class DevPodController {
                 lookupRequired(workspaceActionModal, "#confirmWorkspaceActionButton", Button.class);
         Button closeWorkspaceActionButton =
                 lookupRequired(workspaceActionModal, "#closeWorkspaceActionButton", Button.class);
-        Button cancelWorkspaceActionButton =
+        cancelWorkspaceActionButton =
                 lookupRequired(workspaceActionModal, "#cancelWorkspaceActionButton", Button.class);
 
         emptyCreateWorkspaceButton.setOnAction(event -> showCreateWorkspace());
+        workspaceServerFilterBox.setOnAction(event -> applyWorkspaceFilters());
+        workspaceStatusFilterBox.setItems(FXCollections.observableArrayList(
+                "All", "Running", "Exited", "Created", "Restarting", "Removing", "Paused", "Dead"
+        ));
+        workspaceStatusFilterBox.getSelectionModel().select("All");
+        workspaceStatusFilterBox.setOnAction(event -> applyWorkspaceFilters());
         serversNewServerButton.setOnAction(event -> showNewServerModal());
         createNewServerButton.setOnAction(event -> showNewServerModal());
         createWorkspaceButton.setOnAction(event -> createWorkspace());
@@ -328,8 +349,10 @@ public class DevPodController {
 
     private void loadWorkspacesFromSavedServers() {
         long generation = ++workspaceLoadGeneration;
+        loadedWorkspaces.clear();
         workspaceList.getChildren().clear();
         pendingWorkspaceLoads = servers.size();
+        updateWorkspaceServerFilterOptions();
         updateWorkspaceListVisibility();
 
         if (servers.isEmpty()) {
@@ -350,9 +373,8 @@ public class DevPodController {
                         if (generation != workspaceLoadGeneration) {
                             return;
                         }
-                        for (WorkspaceResponseDto response : getValue()) {
-                            workspaceList.getChildren().add(createWorkspaceCard(response));
-                        }
+                        loadedWorkspaces.addAll(getValue());
+                        applyWorkspaceFilters();
                         completeWorkspaceLoad();
                     }
 
@@ -392,8 +414,58 @@ public class DevPodController {
         boolean showEmptyState = pendingWorkspaceLoads == 0 && !hasWorkspaces;
         emptyWorkspaceState.setVisible(showEmptyState);
         emptyWorkspaceState.setManaged(showEmptyState);
-        workspaceList.setVisible(hasWorkspaces || pendingWorkspaceLoads > 0);
-        workspaceList.setManaged(hasWorkspaces || pendingWorkspaceLoads > 0);
+        workspaceList.setVisible(hasWorkspaces);
+        workspaceList.setManaged(hasWorkspaces);
+        workspaceLoadingState.setVisible(pendingWorkspaceLoads > 0);
+        workspaceLoadingState.setManaged(pendingWorkspaceLoads > 0);
+    }
+
+    private void updateWorkspaceServerFilterOptions() {
+        if (workspaceServerFilterBox == null) {
+            return;
+        }
+
+        String selectedServer = workspaceServerFilterBox.getValue();
+        List<String> serverOptions = new ArrayList<>();
+        serverOptions.add("All");
+        for (ServerInfo server : servers) {
+            String serverInfo = server.getInfo();
+            if (!serverOptions.contains(serverInfo)) {
+                serverOptions.add(serverInfo);
+            }
+        }
+
+        workspaceServerFilterBox.setItems(FXCollections.observableArrayList(serverOptions));
+        if (selectedServer != null && serverOptions.contains(selectedServer)) {
+            workspaceServerFilterBox.getSelectionModel().select(selectedServer);
+        } else {
+            workspaceServerFilterBox.getSelectionModel().select("All");
+        }
+    }
+
+    private void applyWorkspaceFilters() {
+        if (workspaceList == null) {
+            return;
+        }
+
+        String selectedServer = workspaceServerFilterBox == null ? "All" : workspaceServerFilterBox.getValue();
+        String selectedStatus = workspaceStatusFilterBox == null ? "All" : workspaceStatusFilterBox.getValue();
+        workspaceList.getChildren().clear();
+
+        for (WorkspaceResponseDto workspace : loadedWorkspaces) {
+            boolean serverMatches = selectedServer == null
+                    || "All".equals(selectedServer)
+                    || selectedServer.equals(workspace.getServerInfo());
+            boolean statusMatches = selectedStatus == null
+                    || "All".equals(selectedStatus)
+                    || normalizeStatus(selectedStatus).equals(normalizeStatus(workspace.getStatus()));
+
+            if (serverMatches && statusMatches) {
+                workspaceList.getChildren().add(createWorkspaceCard(workspace));
+            }
+        }
+
+        updateWorkspaceListVisibility();
     }
 
     /**
@@ -404,11 +476,22 @@ public class DevPodController {
     private List<WorkspaceResponseDto> handleServerConnected(ServerInfo server, SshService connection) throws IOException {
         List<WorkspaceResponseDto> responseList = new ArrayList<>();
 
-        String json = connection.executeCheckedJson("devpod list --output json", 30);
-        List<DevpodListDto> devpodList =
-                objectMapper.readValue(json, new TypeReference<List<DevpodListDto>>() {});
+        String json = connection.executeCheckedJson("docker ps -a --filter \"label=devcontainer.metadata\" --format json", 30);
+        // List<ContainerGetDto> devpodList =
+        //         objectMapper.readValue(json, new TypeReference<List<ContainerGetDto>>() {});
 
-        for (DevpodListDto devpod : devpodList) {
+        List<ContainerGetDto> devpodList = Arrays.stream(json.split("\n"))
+            .filter(line -> !line.isBlank())
+            .map(line -> {
+                try {
+                    return objectMapper.readValue(line, ContainerGetDto.class);
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            })
+            .collect(Collectors.toList());
+
+        for (ContainerGetDto devpod : devpodList) {
             String dockerCommand = "docker inspect " + shellQuote(devpod.getId());
             String dockerJson = connection.executeCheckedJson(dockerCommand, 30);
             List<DockerInspectDto> dockerInspectList = objectMapper.readValue(
@@ -420,6 +503,7 @@ public class DevPodController {
             }
 
             DockerInspectDto dockerInspect = dockerInspectList.getFirst();
+            RemotePodInfoDto remotePodInfo = readRemotePodInfo(connection, dockerInspect.getWorkspaceName());
             responseList.add(WorkspaceResponseDto.builder()
                     .workspaceName(dockerInspect.getWorkspaceName())
                     .created(dockerInspect.getCreated())
@@ -430,12 +514,29 @@ public class DevPodController {
                     .portInfo(dockerInspect.getPortInfo())
                     .status(dockerInspect.getStatus())
                     .serverInfo(server.getInfo())
-                    .projectPath(devpod.getSource() == null ? "" : devpod.getSource().getLocalFolder())
-                    .devcontainerPath(devpod.getDevContainerPath())
+                    .projectPath(remotePodInfo.getProjectPath())
+                    .devcontainerPath(remotePodInfo.getDevcontainerPath())
                     .build());
         }
 
         return responseList;
+    }
+
+    private RemotePodInfoDto readRemotePodInfo(SshService connection, String containerName) {
+        try {
+            String command = "docker cp "
+                    + shellQuote(containerName + ":/root/.remote-pod/info.json")
+                    + " - | tar -xO";
+            String infoJson = connection.executeCheckedJson(command, 30);
+            if (infoJson == null || infoJson.isBlank()) {
+                return new RemotePodInfoDto();
+            }
+            return objectMapper.readValue(infoJson, RemotePodInfoDto.class);
+        } catch (Exception exception) {
+            System.err.println("Could not read remote pod info for " + containerName + ": "
+                    + exception.getMessage());
+            return new RemotePodInfoDto();
+        }
     }
 
     private void handleServerConnectionFailed(ServerInfo server, Throwable exception) {
@@ -445,15 +546,130 @@ public class DevPodController {
 
     @FXML
     private void updateWorkspace() {
-        // TODO: Implement workspace update command.
+        if (editingWorkspace == null || editingWorkspace.getWorkspaceName() == null
+                || editingWorkspace.getWorkspaceName().isBlank()) {
+            showWarning("Update Workspace failed", "Original workspace information is missing.");
+            return;
+        }
+
+        WorkspaceInput input = readWorkspaceInput();
+        if (input == null) {
+            return;
+        }
+
+        showUpdateWorkspaceModal(input);
+    }
+
+    private void performUpdateWorkspace(WorkspaceInput input) {
+        String originalWorkspaceName = editingWorkspace.getWorkspaceName();
+        ServerInfo originalServer = findServerByInfo(editingWorkspace.getServerInfo());
+        if (originalServer == null) {
+            showWarning("Update Workspace failed", "Could not find the original SSH server.");
+            return;
+        }
+
+        try {
+            deleteDevpodMetadata(input.server());
+            if (!originalWorkspaceName.equals(input.workspaceName())) {
+                isExistedName(input.workspaceName(), input.server());
+            }
+            removeWorkspaceContainer(originalWorkspaceName, originalServer);
+
+            String command = "devpod up "
+                    + shellQuote(input.projectPath())
+                    + " --devcontainer-path "
+                    + shellQuote(input.devcontainerPath())
+                    + " --id "
+                    + shellQuote(input.workspaceName())
+                    + " --ide none";
+            runCreateWorkspaceTask(input, command);
+        } catch (IllegalArgumentException e) {
+            showWarning("Update Workspace failed", e.getMessage());
+        }
+    }
+
+    private ServerInfo findServerByInfo(String serverInfo) {
+        if (serverInfo == null) {
+            return null;
+        }
+        for (ServerInfo server : servers) {
+            if (serverInfo.equals(server.getInfo())) {
+                return server;
+            }
+        }
+        return null;
+    }
+
+    private void removeWorkspaceContainer(String workspaceName, ServerInfo server) {
+        try {
+            sshService.connect(server);
+            sshService.execute("docker stop " + shellQuote(workspaceName), 60);
+            sshService.executeChecked("docker rm " + shellQuote(workspaceName), 60);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to remove existing workspace: " + e.getMessage(), e);
+        } finally {
+            sshService.disconnect();
+        }
     }
 
     private void restartWorkspace(WorkspaceResponseDto workspace) {
-        // TODO: Implement workspace restart command.
+        if (workspace.getProjectPath() == null || workspace.getProjectPath().isBlank()
+                || workspace.getDevcontainerPath() == null || workspace.getDevcontainerPath().isBlank()) {
+            showWorkspaceNoticeModal(
+                    "Cannot Restart Workspace",
+                    "Project Path or Devcontainer Path is missing. Use Edit to configure the workspace first."
+            );
+            return;
+        }
+
+        ServerInfo server = findServerByInfo(workspace.getServerInfo());
+        if (server == null) {
+            showWorkspaceNoticeModal(
+                    "Cannot Restart Workspace",
+                    "Could not find the SSH server for this workspace."
+            );
+            return;
+        }
+
+        WorkspaceInput input = new WorkspaceInput(
+                workspace.getWorkspaceName(),
+                server,
+                workspace.getProjectPath(),
+                workspace.getDevcontainerPath()
+        );
+        try {
+            deleteDevpodMetadata(server);
+            removeWorkspaceContainer(workspace.getWorkspaceName(), server);
+            String command = "devpod up "
+                    + shellQuote(input.projectPath())
+                    + " --devcontainer-path "
+                    + shellQuote(input.devcontainerPath())
+                    + " --id "
+                    + shellQuote(input.workspaceName())
+                    + " --ide none";
+            runCreateWorkspaceTask(input, command);
+        } catch (IllegalArgumentException e) {
+            showWarning("Restart Workspace failed", e.getMessage());
+        }
     }
 
     private void deleteWorkspace(WorkspaceResponseDto workspace) {
-        // TODO: Implement workspace delete command.
+        ServerInfo server = findServerByInfo(workspace.getServerInfo());
+        if (server == null) {
+            showWorkspaceNoticeModal(
+                    "Cannot Delete Workspace",
+                    "Could not find the SSH server for this workspace."
+            );
+            return;
+        }
+
+        try {
+            deleteDevpodMetadata(server);
+            removeWorkspaceContainer(workspace.getWorkspaceName(), server);
+            showWorkspaces();
+        } catch (IllegalArgumentException e) {
+            showWarning("Delete Workspace failed", e.getMessage());
+        }
     }
 
     @FXML
@@ -500,6 +716,7 @@ public class DevPodController {
         servers.add(server);
         persistServers();
         refreshServerList();
+        updateWorkspaceServerFilterOptions();
         sshServerComboBox.getSelectionModel().select(server);
         hideNewServerModal();
     }
@@ -516,19 +733,38 @@ public class DevPodController {
 
     @FXML
     private void createWorkspace() {
-        WorkspaceInput input = readWorkspaceInput();
-        if (input == null) {
-            return;
-        }
+        try {
+            WorkspaceInput input = readWorkspaceInput();
+            if (input == null) {
+                return;
+            }
 
-        String command = "devpod up "
-                + shellQuote(input.projectPath())
-                + " --devcontainer-path "
-                + shellQuote(input.devcontainerPath())
-                + " --id "
-                + shellQuote(input.workspaceName())
-                + " --ide none";
-        runCreateWorkspaceTask(input.workspaceName(), input.server(), command);
+            //devpod Metadata삭제
+            deleteDevpodMetadata(input.server());
+
+            //이름 검증
+            //docker ps 명령을 입력했을때 해당 이름이 이미 존재한다면 예외처리
+            isExistedName(input.workspaceName(), input.server());
+
+            //데브 컨테이너 생성
+            String command = "devpod up "
+                    + shellQuote(input.projectPath())
+                    + " --devcontainer-path "
+                    + shellQuote(input.devcontainerPath())
+                    + " --id "
+                    + shellQuote(input.workspaceName())
+                    + " --ide none";
+
+            runCreateWorkspaceTask(input, command);
+
+
+            //데브 컨테이너 생성 성공 여부 확인
+
+            //devpod Metadata삭제
+
+        } catch (IllegalArgumentException e) {
+            showWarning("Create Workspace failed", e.getMessage());
+        }
     }
 
     @FXML
@@ -634,7 +870,42 @@ public class DevPodController {
         thread.start();
     }
 
-    private void runCreateWorkspaceTask(String workspaceName, ServerInfo server, String command) {
+    private void deleteDevpodMetadata(ServerInfo server) {
+        try {
+            sshService.connect(server);
+            String command = "rm -rf ~/.devpod/contexts/default/workspaces/*";
+            sshService.executeChecked(command, 30);
+        } catch (Exception e) {
+            System.err.println("Failed to delete devpod metadata on server " + server.getInfo() + ": " + e.getMessage());
+        } finally {
+            sshService.disconnect();
+        }
+    }
+
+    private void deleteDevpodMetadata() throws IOException {
+        String command = "rm -rf ~/.devpod/contexts/default/workspaces/*";
+        sshService.executeChecked(command, 30);
+    }
+
+    private void isExistedName(String workspaceName, ServerInfo server) {
+        //이미 해당 이름을 가진 컨테이너가 존재하는지 확인하기 위해 docker ps 명령어를 사용
+        String command = "docker ps -a --filter \"name=^" + workspaceName + "$\" --format json";
+        try {
+            sshService.connect(server);
+            String result = sshService.executeChecked(command, 30);
+            if (result != null && !result.trim().isEmpty()) {
+                throw new IllegalArgumentException("Workspace name already exists on the server.");
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to check existing workspace names: " + e.getMessage(), e);
+        } finally {
+            sshService.disconnect();
+        }
+    }
+
+    private void runCreateWorkspaceTask(WorkspaceInput input, String command) {
+        String workspaceName = input.workspaceName();
+        ServerInfo server = input.server();
         createWorkspaceButton.setDisable(true);
         createWorkspaceButton.setText("Creating...");
         showConsole(workspaceName);
@@ -646,7 +917,14 @@ public class DevPodController {
                 sshService.connect(server);
                 appendConsole("Connected.\n");
                 appendConsole("$ " + command + "\n\n");
-                return sshService.executeCheckedStreaming(command, 3600, DevPodController.this::appendConsole);
+                String output = sshService.executeCheckedStreaming(command, 3600, DevPodController.this::appendConsole);
+                appendConsole("\nVerifying workspace...\n");
+                isSuccessfullyCreated(workspaceName);
+                appendConsole("Writing remote pod info...\n");
+                writeRemotePodInfo(input);
+                appendConsole("Cleaning DevPod metadata...\n");
+                deleteDevpodMetadata();
+                return output;
             }
 
             @Override
@@ -695,6 +973,79 @@ public class DevPodController {
         Thread thread = new Thread(task, "devpod-create-workspace");
         thread.setDaemon(true);
         thread.start();
+    }
+
+    private void isSuccessfullyCreated(String workspaceName) {
+
+        try {
+            String json = sshService.executeCheckedJson("devpod list --output json", 30);
+            System.out.println("1");
+            DevpodListDto devpodInfo =
+                    objectMapper.readValue(json, new TypeReference<List<DevpodListDto>>() {}).get(0);
+            System.out.println("2");
+            String containerJson = sshService.executeCheckedJson(
+                    "docker ps -a --filter "
+                            + shellQuote("label=dev.containers.id=" + devpodInfo.getUid())
+                            + " --format json",
+                    30
+            );
+            System.out.println("3");
+            System.out.println("docker ps -a --filter "
+                        + shellQuote("label=dev.containers.id=" + devpodInfo.getUid())
+                        + " --format json");
+            System.out.println("containerJson: " + containerJson);
+            ContainerInfoDto containerInfoDto =
+                    objectMapper.readValue(containerJson, ContainerInfoDto.class);
+
+            System.out.println("Container Info: " + containerInfoDto.toString());
+
+            if (containerInfoDto != null &&(devpodInfo.getUid().equals(containerInfoDto.getUid()))) {
+                if (workspaceName.equals(containerInfoDto.getNames())) {
+                    appendConsole("Container already has the target name. Skipping rename.\n");
+                } else {
+                    try {
+                        sshService.executeChecked(
+                                "docker rename " + shellQuote(containerInfoDto.getId()) + " " + shellQuote(workspaceName),
+                                30
+                        );
+                    } catch (IOException exception) {
+                        if (!isSameContainerNameRenameError(exception)) {
+                            throw exception;
+                        }
+                        appendConsole("Container already has the target name. Skipping rename.\n");
+                    }
+                }
+            } else {
+                throw new IllegalArgumentException("Workspace creation failed: container not found.");
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to verify workspace creation: " + e.getMessage(), e);
+        }
+    }
+
+    private boolean isSameContainerNameRenameError(IOException exception) {
+        String message = exception.getMessage();
+        return message != null && message.contains("Renaming a container with the same name as its current name");
+    }
+
+    private void writeRemotePodInfo(WorkspaceInput input) throws IOException {
+        var info = objectMapper.createObjectNode();
+        info.put("workspaceName", input.workspaceName());
+        info.put("sshServerInfo", input.server().getInfo());
+        info.put("projectPath", input.projectPath());
+        info.put("devcontainerPath", input.devcontainerPath());
+
+        String json = objectMapper.writeValueAsString(info);
+        String encodedJson = Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+        String script = "mkdir -p ~/.remote-pod && printf %s "
+                + shellQuote(encodedJson)
+                + " | base64 -d > ~/.remote-pod/info.json";
+        String command = "docker exec "
+                + shellQuote(input.workspaceName())
+                + " bash -lc "
+                + shellQuote(script);
+
+        sshService.executeChecked(command, 30);
     }
 
     private void showConsole(String workspaceName) {
@@ -885,6 +1236,7 @@ public class DevPodController {
 
     private void showWorkspaceActionModal(WorkspaceResponseDto workspace, WorkspaceAction action) {
         pendingWorkspaceAction = workspace;
+        pendingUpdateInput = null;
         pendingAction = action;
         boolean deleting = action == WorkspaceAction.DELETE;
         workspaceActionTitle.setText(deleting ? "Delete Workspace" : "Restart Workspace");
@@ -897,6 +1249,38 @@ public class DevPodController {
                 + (deleting ? "#dc2626" : "#38a169")
                 + "; -fx-background-radius: 6; -fx-padding: 8 16; -fx-text-fill: white;"
                 + " -fx-font-size: 13px; -fx-font-weight: 700;");
+        cancelWorkspaceActionButton.setVisible(true);
+        cancelWorkspaceActionButton.setManaged(true);
+        workspaceActionModal.setVisible(true);
+        workspaceActionModal.setManaged(true);
+    }
+
+    private void showUpdateWorkspaceModal(WorkspaceInput input) {
+        pendingWorkspaceAction = null;
+        pendingUpdateInput = input;
+        pendingAction = WorkspaceAction.UPDATE;
+        workspaceActionTitle.setText("Update Workspace");
+        workspaceActionMessage.setText("The existing workspace will be completely deleted and rebuilt as a new workspace.");
+        confirmWorkspaceActionButton.setText("Update");
+        confirmWorkspaceActionButton.setStyle("-fx-background-color: #38a169; -fx-background-radius: 6;"
+                + " -fx-padding: 8 16; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;");
+        cancelWorkspaceActionButton.setVisible(true);
+        cancelWorkspaceActionButton.setManaged(true);
+        workspaceActionModal.setVisible(true);
+        workspaceActionModal.setManaged(true);
+    }
+
+    private void showWorkspaceNoticeModal(String title, String message) {
+        pendingWorkspaceAction = null;
+        pendingUpdateInput = null;
+        pendingAction = WorkspaceAction.NOTICE;
+        workspaceActionTitle.setText(title);
+        workspaceActionMessage.setText(message);
+        confirmWorkspaceActionButton.setText("OK");
+        confirmWorkspaceActionButton.setStyle("-fx-background-color: #38a169; -fx-background-radius: 6;"
+                + " -fx-padding: 8 16; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;");
+        cancelWorkspaceActionButton.setVisible(false);
+        cancelWorkspaceActionButton.setManaged(false);
         workspaceActionModal.setVisible(true);
         workspaceActionModal.setManaged(true);
     }
@@ -905,19 +1289,25 @@ public class DevPodController {
         workspaceActionModal.setVisible(false);
         workspaceActionModal.setManaged(false);
         pendingWorkspaceAction = null;
+        pendingUpdateInput = null;
         pendingAction = null;
     }
 
     private void confirmWorkspaceAction() {
         WorkspaceResponseDto workspace = pendingWorkspaceAction;
+        WorkspaceInput updateInput = pendingUpdateInput;
         WorkspaceAction action = pendingAction;
         hideWorkspaceActionModal();
-        if (workspace == null || action == null) {
+        if (action == null || action == WorkspaceAction.NOTICE) {
             return;
         }
-        if (action == WorkspaceAction.RESTART) {
+        if (action == WorkspaceAction.UPDATE) {
+            if (updateInput != null) {
+                performUpdateWorkspace(updateInput);
+            }
+        } else if (action == WorkspaceAction.RESTART && workspace != null) {
             restartWorkspace(workspace);
-        } else {
+        } else if (action == WorkspaceAction.DELETE && workspace != null) {
             deleteWorkspace(workspace);
         }
     }
@@ -1275,8 +1665,10 @@ public class DevPodController {
     }
 
     private enum WorkspaceAction {
+        UPDATE,
         RESTART,
-        DELETE
+        DELETE,
+        NOTICE
     }
 
     private void loadSvgIcons(Node node) {

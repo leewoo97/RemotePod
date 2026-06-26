@@ -10,30 +10,15 @@
         <Insets top="26" right="20" bottom="0" left="22"/>
     </padding>
 
-    <HBox alignment="CENTER_LEFT">
-        <CheckBox text="Select all" focusTraversable="false"
-                  style="-fx-text-fill: #697386; -fx-font-size: 13px; -fx-font-weight: 600;"/>
-        <Region HBox.hgrow="ALWAYS"/>
-        <HBox spacing="9" alignment="CENTER_RIGHT">
-            <Button text="Servers" focusTraversable="false"
-                    style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 6 10; -fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;">
-                <graphic>
-                    <ImageView fitWidth="15" fitHeight="15" preserveRatio="true">
-                        <image><Image url="@../images/png-fixed/Stack3D.png"/></image>
-                    </ImageView>
-                </graphic>
-            </Button>
-            <Button text="Status (4/4)" focusTraversable="false"
-                    style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 6 10; -fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;">
-                <graphic>
-                    <ImageView fitWidth="15" fitHeight="15" preserveRatio="true">
-                        <image><Image url="@../images/png-fixed/Status.png"/></image>
-                    </ImageView>
-                </graphic>
-            </Button>
-            <Button text="Sort by: Recently Used" focusTraversable="false"
-                    style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 6 10; -fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;"/>
-        </HBox>
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <Label text="Server" style="-fx-text-fill: #697386; -fx-font-size: 12px; -fx-font-weight: 800;"/>
+        <ComboBox fx:id="workspaceServerFilterBox" id="workspaceServerFilterBox" focusTraversable="false"
+                  prefWidth="220"
+                  style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 2 4; -fx-font-size: 12px;"/>
+        <Label text="Status" style="-fx-text-fill: #697386; -fx-font-size: 12px; -fx-font-weight: 800;"/>
+        <ComboBox fx:id="workspaceStatusFilterBox" id="workspaceStatusFilterBox" focusTraversable="false"
+                  prefWidth="140"
+                  style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 2 4; -fx-font-size: 12px;"/>
     </HBox>
 
     <StackPane VBox.vgrow="ALWAYS">
@@ -57,5 +42,12 @@
                 </VBox>
             </content>
         </ScrollPane>
+
+        <VBox fx:id="workspaceLoadingState" id="workspaceLoadingState" alignment="CENTER" spacing="12"
+              visible="false" managed="false">
+            <ProgressIndicator prefWidth="38" prefHeight="38"/>
+            <Label text="Loading workspaces..."
+                   style="-fx-text-fill: #697386; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+        </VBox>
     </StackPane>
 </VBox>
