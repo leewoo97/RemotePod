@@ -589,7 +589,22 @@ public class DevPodController {
     }
 
     private void deleteWorkspace(WorkspaceResponseDto workspace) {
-        // TODO: Implement workspace delete command.
+        ServerInfo server = findServerByInfo(workspace.getServerInfo());
+        if (server == null) {
+            showWorkspaceNoticeModal(
+                    "Cannot Delete Workspace",
+                    "Could not find the SSH server for this workspace."
+            );
+            return;
+        }
+
+        try {
+            deleteDevpodMetadata(server);
+            removeWorkspaceContainer(workspace.getWorkspaceName(), server);
+            showWorkspaces();
+        } catch (IllegalArgumentException e) {
+            showWarning("Delete Workspace failed", e.getMessage());
+        }
     }
 
     @FXML
