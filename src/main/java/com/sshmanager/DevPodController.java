@@ -10,6 +10,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.Labeled;
@@ -409,7 +410,7 @@ public class DevPodController {
     private List<WorkspaceResponseDto> handleServerConnected(ServerInfo server, SshService connection) throws IOException {
         List<WorkspaceResponseDto> responseList = new ArrayList<>();
 
-        String json = connection.executeCheckedJson("docker ps --filter \"label=devcontainer.metadata\" --format json", 30);
+        String json = connection.executeCheckedJson("docker ps -a --filter \"label=devcontainer.metadata\" --format json", 30);
         // List<ContainerGetDto> devpodList =
         //         objectMapper.readValue(json, new TypeReference<List<ContainerGetDto>>() {});
 
@@ -479,7 +480,78 @@ public class DevPodController {
 
     @FXML
     private void updateWorkspace() {
-        // TODO: Implement workspace update command.
+        if (editingWorkspace == null || editingWorkspace.getWorkspaceName() == null
+                || editingWorkspace.getWorkspaceName().isBlank()) {
+            showWarning("Update Workspace failed", "Original workspace information is missing.");
+            return;
+        }
+
+        WorkspaceInput input = readWorkspaceInput();
+        if (input == null) {
+            return;
+        }
+
+        if (!confirmWorkspaceUpdate()) {
+            return;
+        }
+
+        String originalWorkspaceName = editingWorkspace.getWorkspaceName();
+        ServerInfo originalServer = findServerByInfo(editingWorkspace.getServerInfo());
+        if (originalServer == null) {
+            showWarning("Update Workspace failed", "Could not find the original SSH server.");
+            return;
+        }
+
+        try {
+            deleteDevpodMetadata(input.server());
+            if (!originalWorkspaceName.equals(input.workspaceName())) {
+                isExistedName(input.workspaceName(), input.server());
+            }
+            removeWorkspaceContainer(originalWorkspaceName, originalServer);
+
+            String command = "devpod up "
+                    + shellQuote(input.projectPath())
+                    + " --devcontainer-path "
+                    + shellQuote(input.devcontainerPath())
+                    + " --id "
+                    + shellQuote(input.workspaceName())
+                    + " --ide none";
+            runCreateWorkspaceTask(input, command);
+        } catch (IllegalArgumentException e) {
+            showWarning("Update Workspace failed", e.getMessage());
+        }
+    }
+
+    private boolean confirmWorkspaceUpdate() {
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+        alert.setTitle("Update Workspace");
+        alert.setHeaderText(null);
+        alert.setContentText("The existing workspace will be completely deleted and rebuilt as a new workspace.");
+        return alert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK;
+    }
+
+    private ServerInfo findServerByInfo(String serverInfo) {
+        if (serverInfo == null) {
+            return null;
+        }
+        for (ServerInfo server : servers) {
+            if (serverInfo.equals(server.getInfo())) {
+                return server;
+            }
+        }
+        return null;
+    }
+
+    private void removeWorkspaceContainer(String workspaceName, ServerInfo server) {
+        try {
+            sshService.connect(server);
+            sshService.execute("docker stop " + shellQuote(workspaceName), 60);
+            sshService.executeChecked("docker rm " + shellQuote(workspaceName), 60);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to remove existing workspace: " + e.getMessage(), e);
+        } finally {
+            sshService.disconnect();
+        }
     }
 
     private void restartWorkspace(WorkspaceResponseDto workspace) {
