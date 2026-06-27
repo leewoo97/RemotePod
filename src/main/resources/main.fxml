@@ -29,7 +29,7 @@
                           style="-fx-background-color: #b35ff2; -fx-background-radius: 5; -fx-cursor: hand;">
                         <padding><Insets left="13" right="10"/></padding>
                         <ImageView fitWidth="17" fitHeight="17" preserveRatio="true" translateY="1">
-                            <image><Image url="@images/png-white-fixed/Briefcase.png"/></image>
+                            <image><Image url="@images/icon/briefcase.png"/></image>
                         </ImageView>
                         <Label text="Workspaces" style="-fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 500;"/>
                     </HBox>
@@ -38,7 +38,7 @@
                           onMouseClicked="#showServers" style="-fx-cursor: hand;">
                         <padding><Insets left="13" right="10"/></padding>
                         <ImageView fitWidth="15" fitHeight="15" preserveRatio="true">
-                            <image><Image url="@images/png-fixed/Stack3D.png"/></image>
+                            <image><Image url="@images/icon/server.png"/></image>
                         </ImageView>
                         <Label fx:id="serversNavLabel" text="Servers"
                                style="-fx-text-fill: #535a67; -fx-font-size: 13px;"/>
@@ -47,7 +47,7 @@
                     <HBox alignment="CENTER_LEFT" spacing="9" prefHeight="34">
                         <padding><Insets left="13" right="10"/></padding>
                         <ImageView fitWidth="15" fitHeight="15" preserveRatio="true">
-                            <image><Image url="@images/png-fixed/Cog.png"/></image>
+                            <image><Image url="@images/icon/settings.png"/></image>
                         </ImageView>
                         <Label text="Settings" style="-fx-text-fill: #535a67; -fx-font-size: 13px;"/>
                     </HBox>
@@ -102,7 +102,7 @@
                         <Region HBox.hgrow="ALWAYS"/>
 
                         <ImageView fitWidth="16" fitHeight="16" preserveRatio="true">
-                            <image><Image url="@images/png-fixed/Bell.png"/></image>
+                            <image><Image url="@images/icon/notification.png"/></image>
                             <HBox.margin><Insets right="26"/></HBox.margin>
                         </ImageView>
 
