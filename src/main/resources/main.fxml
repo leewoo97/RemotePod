@@ -115,7 +115,7 @@
                                     <ImageView fitWidth="35" fitHeight="18" preserveRatio="true">
                                         <image><Image url="@images/png-fixed/DevPodProBadge.png"/></image>
                                     </ImageView>
-                                    <Label text="Try DevPod Pro"
+                                    <Label text="Try RemotePod Pro"
                                            style="-fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;"/>
                                 </HBox>
                             </graphic>
@@ -137,7 +137,7 @@
                     <HBox alignment="CENTER_LEFT" prefHeight="28"
                           style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec transparent transparent transparent; -fx-border-width: 1 0 0 0;">
                         <padding><Insets left="24" right="24"/></padding>
-                        <Label text="0.6.15  windows  x86_64"
+                        <Label text="1.0.0  windows  x86_64"
                                style="-fx-text-fill: #4b5563; -fx-font-size: 12px;"/>
                         <Region HBox.hgrow="ALWAYS"/>
                         <HBox alignment="CENTER_RIGHT" spacing="20">

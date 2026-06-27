@@ -6,9 +6,8 @@
 <?import javafx.scene.layout.*?>
 
 <StackPane xmlns:fx="http://javafx.com/fxml">
-    <ScrollPane fx:id="createView" id="createView" visible="false" managed="false" fitToWidth="true"
-                hbarPolicy="NEVER" vbarPolicy="AS_NEEDED"
-                style="-fx-background-color: #ffffff; -fx-background: #ffffff;">
+    <VBox fx:id="createView" id="createView" visible="false" managed="false"
+          style="-fx-background-color: #ffffff;">
         <VBox spacing="0" style="-fx-background-color: #ffffff;">
             <padding>
                 <Insets top="22" right="22" bottom="0" left="22"/>
@@ -17,8 +16,9 @@
             <VBox spacing="10">
                 <Label text="Workspace Name"
                        style="-fx-text-fill: #1f2430; -fx-font-size: 14px; -fx-font-weight: 700;"/>
-                <TextField fx:id="workspaceNameField" id="workspaceNameField" text="my-workspace" prefWidth="370" maxWidth="370"
-                           style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #69758b; -fx-font-size: 13px;"/>
+                <TextField fx:id="workspaceNameField" id="workspaceNameField" text="my-workspace"
+                           prefWidth="370" maxWidth="370"
+                           style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
                 <Label wrapText="true" maxWidth="560"
                        text="This is the workspace name that RemotePod will use as the container name.&#10;&#10;If a name is already specified in your devcontainer.json, a conflict may occur. Please click &quot;Edit devcontainer.json&quot; below to modify or remove it before proceeding."
                        style="-fx-text-fill: #4e586c; -fx-font-size: 12px;"/>
@@ -39,7 +39,7 @@
                             <HBox spacing="9" GridPane.columnIndex="1" GridPane.rowIndex="0">
                                 <ComboBox fx:id="sshServerComboBox" id="sshServerComboBox" promptText="Select an SSH server"
                                           prefWidth="280" prefHeight="36" minHeight="36" maxHeight="36"
-                                          style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-font-size: 13px;"/>
+                                          style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 2 4; -fx-font-size: 13px;"/>
                                 <Button fx:id="createNewServerButton" id="createNewServerButton" text="+ New Server" focusTraversable="false"
                                         prefHeight="36" minHeight="36" maxHeight="36"
                                         style="-fx-background-color: #38a169; -fx-background-radius: 6; -fx-padding: 8 12; -fx-text-fill: white; -fx-font-size: 12px; -fx-font-weight: 700;"/>
@@ -47,17 +47,17 @@
 
                             <Label text="Project Path" GridPane.columnIndex="0" GridPane.rowIndex="1"
                                    style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
-                            <TextField fx:id="projectPathField" id="projectPathField" text="/workspace/my-project" prefWidth="390"
-                                       prefHeight="36" minHeight="36" maxHeight="36"
-                                       GridPane.columnIndex="1" GridPane.rowIndex="1"
-                                       style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
+                            <TextField fx:id="projectPathField" id="projectPathField" text="/workspace/my-project"
+                                       prefWidth="390" prefHeight="36" minHeight="36" maxHeight="36"
+                                       style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"
+                                       GridPane.columnIndex="1" GridPane.rowIndex="1"/>
 
                             <Label text="Devcontainer Path" GridPane.columnIndex="0" GridPane.rowIndex="2"
                                    style="-fx-text-fill: #1f2430; -fx-font-size: 12px; -fx-font-weight: 700;"/>
-                            <TextField fx:id="devcontainerPathField" id="devcontainerPathField" text=".devcontainer/devcontainer.json" prefWidth="390"
-                                       prefHeight="36" minHeight="36" maxHeight="36"
-                                       GridPane.columnIndex="1" GridPane.rowIndex="2"
-                                       style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
+                            <TextField fx:id="devcontainerPathField" id="devcontainerPathField" text=".devcontainer/devcontainer.json"
+                                       prefWidth="390" prefHeight="36" minHeight="36" maxHeight="36"
+                                       style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"
+                                       GridPane.columnIndex="1" GridPane.rowIndex="2"/>
                         </GridPane>
                         <Label text="RemotePod will connect to the SSH server and use the selected project path as the workspace root."
                                alignment="CENTER" textAlignment="CENTER" wrapText="false" maxWidth="Infinity"
@@ -116,6 +116,9 @@
 
             <HBox alignment="CENTER_LEFT" prefHeight="58"
                   style="-fx-border-color: #dce3ec transparent transparent transparent; -fx-border-width: 1 0 0 0;">
+                <VBox.margin>
+                    <Insets top="18"/>
+                </VBox.margin>
                 <Button fx:id="createWorkspaceButton" id="createWorkspaceButton" text="Create Workspace" focusTraversable="false"
                         prefWidth="176" prefHeight="34"
                         style="-fx-background-color: #d9a9f6; -fx-background-radius: 5; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;"/>
@@ -126,7 +129,7 @@
                 </Button>
             </HBox>
         </VBox>
-    </ScrollPane>
+    </VBox>
 
     <ScrollPane fx:id="workspaceDetailView" id="workspaceDetailView"
                 visible="false" managed="false" fitToWidth="true"
