@@ -19,15 +19,17 @@
                 <TextField fx:id="workspaceNameField" id="workspaceNameField" text="my-workspace"
                            prefWidth="370" maxWidth="370"
                            style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 8 10; -fx-text-fill: #768298; -fx-font-size: 13px;"/>
-                <Label wrapText="true" maxWidth="560"
-                       text="This is the workspace name that RemotePod will use as the container name.&#10;&#10;If a name is already specified in your devcontainer.json, a conflict may occur. Please click &quot;Edit devcontainer.json&quot; below to modify or remove it before proceeding."
+                <Label text="This is the workspace name that RemotePod will use as the container name."
+                       style="-fx-text-fill: #4e586c; -fx-font-size: 12px;"/>
+                <Label wrapText="true" maxWidth="900" prefWidth="900"
+                       text="If a name is already specified in your devcontainer.json, a conflict may occur. Please click &quot;Edit devcontainer.json&quot; below to modify or remove it before proceeding."
                        style="-fx-text-fill: #4e586c; -fx-font-size: 12px;"/>
                 <VBox.margin>
                     <Insets bottom="24"/>
                 </VBox.margin>
             </VBox>
 
-            <BorderPane prefHeight="374"
+            <BorderPane prefHeight="292" minHeight="292" maxHeight="292"
                         style="-fx-background-color: #f8fafc; -fx-border-color: #dce3ec; -fx-border-radius: 7; -fx-background-radius: 7;">
                 <center>
                     <VBox alignment="CENTER" spacing="14">
@@ -68,21 +70,24 @@
                 <right>
                     <VBox prefWidth="176"
                           style="-fx-background-color: #ffffff; -fx-border-color: transparent transparent transparent #dce3ec; -fx-border-width: 0 0 0 1;">
-                        <VBox alignment="CENTER" prefHeight="72"
+                        <VBox alignment="CENTER" prefHeight="64"
                               style="-fx-border-color: transparent transparent #dce3ec transparent; -fx-border-width: 0 0 1 0;">
-                            <Label text="Or select one of our" style="-fx-text-fill: #7b8498; -fx-font-size: 13px; -fx-font-weight: 700;"/>
-                            <Label text="quickstart examples" style="-fx-text-fill: #7b8498; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+                            <Label text="Select the cloud type" style="-fx-text-fill: #7b8498; -fx-font-size: 13px; -fx-font-weight: 700;"/>
+                            <Label text="to connect" style="-fx-text-fill: #7b8498; -fx-font-size: 13px; -fx-font-weight: 700;"/>
                         </VBox>
-                        <GridPane alignment="TOP_CENTER" hgap="20" vgap="16">
-                            <padding><Insets top="20"/></padding>
-                            <Label text="PY" GridPane.columnIndex="0" GridPane.rowIndex="0" style="-fx-text-fill: #4778b5; -fx-font-size: 22px; -fx-font-weight: 800;"/>
-                            <Label text="JS" GridPane.columnIndex="1" GridPane.rowIndex="0" style="-fx-text-fill: #70a54a; -fx-font-size: 26px; -fx-font-weight: 800;"/>
-                            <Label text="GO" GridPane.columnIndex="0" GridPane.rowIndex="1" style="-fx-text-fill: #000000; -fx-font-size: 20px; -fx-font-weight: 800; -fx-font-style: italic;"/>
-                            <Label text="R" GridPane.columnIndex="1" GridPane.rowIndex="1" style="-fx-text-fill: #000000; -fx-font-size: 28px; -fx-font-weight: 800;"/>
-                            <Label text="Java" GridPane.columnIndex="0" GridPane.rowIndex="2" style="-fx-text-fill: #d06a18; -fx-font-size: 15px;"/>
-                            <Label text="php" GridPane.columnIndex="1" GridPane.rowIndex="2" style="-fx-text-fill: #000000; -fx-font-size: 24px; -fx-font-weight: 800; -fx-font-style: italic;"/>
-                            <Label text="C++" GridPane.columnIndex="0" GridPane.rowIndex="3" style="-fx-text-fill: #4a72ad; -fx-font-size: 18px; -fx-font-weight: 800;"/>
-                            <Label text="NET" GridPane.columnIndex="1" GridPane.rowIndex="3" style="-fx-text-fill: #9b37e8; -fx-font-size: 18px; -fx-font-weight: 800;"/>
+                        <GridPane alignment="CENTER" hgap="22" vgap="20" VBox.vgrow="ALWAYS">
+                            <ImageView fitWidth="42" fitHeight="42" preserveRatio="true" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                <image><Image url="@../icons/png-fixed/none_dark.png"/></image>
+                            </ImageView>
+                            <ImageView fitWidth="42" fitHeight="42" preserveRatio="true" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                <image><Image url="@../icons/png-fixed/aws.png"/></image>
+                            </ImageView>
+                            <ImageView fitWidth="42" fitHeight="42" preserveRatio="true" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                                <image><Image url="@../icons/png-fixed/azure.png"/></image>
+                            </ImageView>
+                            <ImageView fitWidth="42" fitHeight="42" preserveRatio="true" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                <image><Image url="@../icons/png-fixed/gcp.png"/></image>
+                            </ImageView>
                         </GridPane>
                     </VBox>
                 </right>
@@ -114,11 +119,14 @@
                 </VBox>
             </GridPane>
 
-            <HBox alignment="CENTER_LEFT" prefHeight="58"
+            <HBox alignment="CENTER_LEFT" prefHeight="68"
                   style="-fx-border-color: #dce3ec transparent transparent transparent; -fx-border-width: 1 0 0 0;">
                 <VBox.margin>
                     <Insets top="18"/>
                 </VBox.margin>
+                <padding>
+                    <Insets top="10" bottom="10"/>
+                </padding>
                 <Button fx:id="createWorkspaceButton" id="createWorkspaceButton" text="Create Workspace" focusTraversable="false"
                         prefWidth="176" prefHeight="34"
                         style="-fx-background-color: #d9a9f6; -fx-background-radius: 5; -fx-padding: 8 14; -fx-text-fill: white; -fx-font-size: 13px; -fx-font-weight: 700;"/>
