@@ -110,8 +110,8 @@
                                 style="-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 6; -fx-background-radius: 6; -fx-padding: 6 10;">
                             <graphic>
                                 <HBox alignment="CENTER" spacing="12">
-                                    <ImageView fitWidth="35" fitHeight="18" preserveRatio="true">
-                                        <image><Image url="@images/png-fixed/DevPodProBadge.png"/></image>
+                                    <ImageView fitWidth="18" fitHeight="18" preserveRatio="true">
+                                        <image><Image url="@images/icon/premiere-pro.png"/></image>
                                     </ImageView>
                                     <Label text="Try RemotePod Pro"
                                            style="-fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;"/>
