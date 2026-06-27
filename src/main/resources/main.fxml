@@ -15,9 +15,9 @@
                   style="-fx-background-color: #eef2f6; -fx-border-color: transparent #dce3ec transparent transparent; -fx-border-width: 0 1 0 0;">
                 <padding><Insets top="48" right="10" bottom="14" left="10"/></padding>
 
-                <HBox alignment="CENTER_LEFT" spacing="10">
-                    <ImageView fitWidth="132" fitHeight="44" preserveRatio="true">
-                        <image><Image url="@images/logo/mainlogo.png"/></image>
+                <HBox alignment="CENTER_LEFT" spacing="10" translateX="13" translateY="-30">
+                    <ImageView fitWidth="300" fitHeight="150" preserveRatio="true">
+                        <image><Image url="@images/logo/remotepod_main.png"/></image>
                     </ImageView>
                 </HBox>
 

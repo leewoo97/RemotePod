@@ -17,8 +17,8 @@ public class MainApp extends Application {
         Scene scene = new Scene(loader.load());
         scene.getStylesheets().add(getClass().getResource("/styles/app.css").toExternalForm());
 
-        primaryStage.setTitle("DevPod");
-        primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo/image.png")));
+        primaryStage.setTitle("RemotePod");
+        primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo/remotepod_logo.png")));
         primaryStage.setScene(scene);
         primaryStage.setWidth(1280);
         primaryStage.setHeight(820);
