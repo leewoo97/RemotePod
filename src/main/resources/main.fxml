@@ -57,10 +57,8 @@
 
                 <HBox alignment="CENTER_LEFT" spacing="8">
                     <padding><Insets left="16"/></padding>
-                    <Label text="Open sourced by" style="-fx-text-fill: #78859a; -fx-font-size: 12px;"/>
-                    <ImageView fitWidth="36" fitHeight="20" preserveRatio="true">
-                        <image><Image url="@images/png-fixed/Loft.png"/></image>
-                    </ImageView>
+                    <Label text="Developed by" style="-fx-text-fill: #78859a; -fx-font-size: 12px;"/>
+                    <Label text="leewoo97" style="-fx-text-fill: #535a67; -fx-font-size: 12px; -fx-font-weight: 800;"/>
                 </HBox>
             </VBox>
         </left>
