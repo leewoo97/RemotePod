@@ -69,6 +69,7 @@ public class DevPodController {
     private VBox workspaceDetailContent;
     private Node emptyWorkspaceState;
     private Node workspaceLoadingState;
+    private Node workspaceListScrollPane;
     private Node emptyServerState;
     private VBox workspaceList;
     private VBox serverList;
@@ -135,6 +136,7 @@ public class DevPodController {
     private void bindIncludedViewControls() {
         emptyWorkspaceState = lookupRequired(workspaceView, "#emptyWorkspaceState", Node.class);
         workspaceLoadingState = lookupRequired(workspaceView, "#workspaceLoadingState", Node.class);
+        workspaceListScrollPane = lookupRequired(workspaceView, "#workspaceListScrollPane", Node.class);
         workspaceList = lookupRequired(workspaceView, "#workspaceList", VBox.class);
         workspaceServerFilterBox = lookupRequired(workspaceView, "#workspaceServerFilterBox", ComboBox.class);
         workspaceStatusFilterBox = lookupRequired(workspaceView, "#workspaceStatusFilterBox", ComboBox.class);
@@ -413,6 +415,8 @@ public class DevPodController {
         boolean showEmptyState = pendingWorkspaceLoads == 0 && !hasWorkspaces;
         emptyWorkspaceState.setVisible(showEmptyState);
         emptyWorkspaceState.setManaged(showEmptyState);
+        workspaceListScrollPane.setVisible(hasWorkspaces);
+        workspaceListScrollPane.setManaged(hasWorkspaces);
         workspaceList.setVisible(hasWorkspaces);
         workspaceList.setManaged(hasWorkspaces);
         workspaceLoadingState.setVisible(pendingWorkspaceLoads > 0);

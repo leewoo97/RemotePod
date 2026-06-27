@@ -32,7 +32,8 @@
                     style="-fx-background-color: #eef1f5; -fx-background-radius: 5; -fx-padding: 6 10; -fx-text-fill: #111827; -fx-font-size: 12px; -fx-font-weight: 700;"/>
         </VBox>
 
-        <ScrollPane fitToWidth="true" hbarPolicy="NEVER"
+        <ScrollPane fx:id="workspaceListScrollPane" id="workspaceListScrollPane"
+                    fitToWidth="true" hbarPolicy="NEVER"
                     style="-fx-background-color: transparent; -fx-background: transparent; -fx-border-color: transparent;">
             <content>
                 <VBox fx:id="workspaceList" id="workspaceList" spacing="10" alignment="TOP_CENTER">
