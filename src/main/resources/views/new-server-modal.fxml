@@ -8,7 +8,7 @@
     <VBox maxWidth="470" maxHeight="430" spacing="16"
           style="-fx-background-color: #ffffff; -fx-background-radius: 10; -fx-padding: 24; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.24), 24, 0.15, 0, 8);">
         <HBox alignment="CENTER_LEFT">
-            <Label text="New SSH Server"
+            <Label fx:id="newServerModalTitle" id="newServerModalTitle" text="New SSH Server"
                    style="-fx-text-fill: #111827; -fx-font-size: 19px; -fx-font-weight: 800;"/>
             <Region HBox.hgrow="ALWAYS"/>
             <Button fx:id="closeNewServerModalButton" id="closeNewServerModalButton" text="X" focusTraversable="false"

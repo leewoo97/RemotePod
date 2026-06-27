@@ -91,6 +91,8 @@ public class DevPodController {
     private TextField newServerAddressField;
     private TextField newServerUserField;
     private PasswordField newServerPasswordField;
+    private Label newServerModalTitle;
+    private Button saveNewServerButton;
     private Label workspaceActionTitle;
     private Label workspaceActionMessage;
     private Button confirmWorkspaceActionButton;
@@ -111,6 +113,7 @@ public class DevPodController {
     private long workspaceLoadGeneration;
     private int pendingWorkspaceLoads;
     private WorkspaceResponseDto editingWorkspace;
+    private ServerInfo editingServer;
     private WorkspaceResponseDto pendingWorkspaceAction;
     private WorkspaceInput pendingUpdateInput;
     private WorkspaceAction pendingAction;
@@ -177,11 +180,13 @@ public class DevPodController {
                 lookupRequired(newServerModal, "#newServerUserField", TextField.class);
         newServerPasswordField =
                 lookupRequired(newServerModal, "#newServerPasswordField", PasswordField.class);
+        newServerModalTitle =
+                lookupRequired(newServerModal, "#newServerModalTitle", Label.class);
         Button closeNewServerModalButton =
                 lookupRequired(newServerModal, "#closeNewServerModalButton", Button.class);
         Button cancelNewServerButton =
                 lookupRequired(newServerModal, "#cancelNewServerButton", Button.class);
-        Button saveNewServerButton =
+        saveNewServerButton =
                 lookupRequired(newServerModal, "#saveNewServerButton", Button.class);
         workspaceActionTitle =
                 lookupRequired(workspaceActionModal, "#workspaceActionTitle", Label.class);
@@ -677,9 +682,24 @@ public class DevPodController {
 
     @FXML
     private void showNewServerModal() {
+        editingServer = null;
+        newServerModalTitle.setText("New SSH Server");
+        saveNewServerButton.setText("Save Server");
         newServerAddressField.clear();
         newServerUserField.clear();
         newServerPasswordField.clear();
+        newServerModal.setVisible(true);
+        newServerModal.setManaged(true);
+        Platform.runLater(newServerAddressField::requestFocus);
+    }
+
+    private void showEditServerModal(ServerInfo server) {
+        editingServer = server;
+        newServerModalTitle.setText("Edit SSH Server");
+        saveNewServerButton.setText("Update Server");
+        newServerAddressField.setText(server.getHost() + ":" + server.getPort());
+        newServerUserField.setText(server.getUser());
+        newServerPasswordField.setText(server.getPassword());
         newServerModal.setVisible(true);
         newServerModal.setManaged(true);
         Platform.runLater(newServerAddressField::requestFocus);
@@ -689,6 +709,7 @@ public class DevPodController {
     private void hideNewServerModal() {
         newServerModal.setVisible(false);
         newServerModal.setManaged(false);
+        editingServer = null;
     }
 
     @FXML
@@ -716,7 +737,15 @@ public class DevPodController {
                 user,
                 password
         );
-        servers.add(server);
+        if (editingServer == null) {
+            servers.add(server);
+        } else {
+            int index = servers.indexOf(editingServer);
+            if (index >= 0) {
+                servers.set(index, server);
+            }
+            editingServer = null;
+        }
         persistServers();
         refreshServerList();
         updateWorkspaceServerFilterOptions();
@@ -1233,7 +1262,7 @@ public class DevPodController {
         button.setStyle("-fx-background-color: transparent; -fx-background-radius: 4;"
                 + " -fx-padding: 5 8; -fx-text-fill: "
                 + (destructive ? "#dc2626" : "#374151")
-                + "; -fx-font-size: 11px; -fx-font-weight: 600; -fx-cursor: hand;");
+                + "; -fx-font-size: 11px; -fx-cursor: hand;");
         return button;
     }
 
@@ -1468,10 +1497,29 @@ public class DevPodController {
     }
 
     private Node createServerRow(ServerInfo server) {
-        HBox row = new HBox(14);
-        row.setMinHeight(68);
-        row.setPadding(new Insets(13, 16, 13, 16));
-        row.setStyle("-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 7; -fx-background-radius: 7;");
+        StackPane card = new StackPane();
+        card.setMaxWidth(Double.MAX_VALUE);
+        card.setMinHeight(92);
+        card.setPrefHeight(92);
+        card.setMaxHeight(92);
+        card.setStyle("-fx-background-color: #ffffff; -fx-border-color: #dce3ec; -fx-border-radius: 7; -fx-background-radius: 7;");
+
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(13, 16, 13, 16));
+
+        HBox top = new HBox();
+        top.setAlignment(Pos.CENTER_LEFT);
+        Label type = new Label("SSH");
+        type.setStyle("-fx-text-fill: #38a169; -fx-font-size: 12px; -fx-font-weight: 800;");
+        Region topSpacer = new Region();
+        HBox.setHgrow(topSpacer, javafx.scene.layout.Priority.ALWAYS);
+        Button moreButton = new Button("\u22EE");
+        moreButton.setFocusTraversable(false);
+        moreButton.setMinSize(26, 26);
+        moreButton.setPrefSize(26, 26);
+        moreButton.setStyle("-fx-background-color: transparent; -fx-background-radius: 6;"
+                + " -fx-padding: 0; -fx-text-fill: #697386; -fx-font-size: 16px; -fx-font-weight: 800;");
+        top.getChildren().addAll(type, topSpacer, moreButton);
 
         VBox details = new VBox(4);
         Label name = new Label(server.getUser() + "@" + server.getHost());
@@ -1479,13 +1527,53 @@ public class DevPodController {
         Label address = new Label(server.getHost() + ":" + server.getPort());
         address.setStyle("-fx-text-fill: #697386; -fx-font-size: 12px;");
         details.getChildren().addAll(name, address);
+        content.getChildren().addAll(top, details);
 
-        Region spacer = new Region();
-        HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
-        Label type = new Label("SSH");
-        type.setStyle("-fx-text-fill: #38a169; -fx-font-size: 12px; -fx-font-weight: 800;");
-        row.getChildren().addAll(details, spacer, type);
-        return row;
+        Button editButton = createServerMenuButton("Edit", false);
+        editButton.setOnAction(event -> showEditServerModal(server));
+        Button deleteButton = createServerMenuButton("Delete", true);
+        deleteButton.setOnAction(event -> deleteServer(server));
+        VBox popupMenu = new VBox(2, editButton, deleteButton);
+        popupMenu.setVisible(false);
+        popupMenu.setManaged(false);
+        popupMenu.setMaxWidth(104);
+        popupMenu.setStyle("-fx-background-color: #ffffff; -fx-border-color: #dce3ec;"
+                + " -fx-border-radius: 6; -fx-background-radius: 6;"
+                + " -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.14), 10, 0.1, 0, 3);"
+                + " -fx-padding: 4;");
+        StackPane.setAlignment(popupMenu, Pos.TOP_RIGHT);
+        StackPane.setMargin(popupMenu, new Insets(42, 12, 0, 0));
+
+        moreButton.setOnAction(event -> {
+            boolean show = !popupMenu.isVisible();
+            popupMenu.setVisible(show);
+            popupMenu.setManaged(show);
+            event.consume();
+        });
+
+        card.getChildren().addAll(content, popupMenu);
+        return card;
+    }
+
+    private Button createServerMenuButton(String text, boolean danger) {
+        Button button = new Button(text);
+        button.setFocusTraversable(false);
+        button.setMaxWidth(Double.MAX_VALUE);
+        button.setAlignment(Pos.CENTER_LEFT);
+        button.setStyle("-fx-background-color: transparent; -fx-background-radius: 4;"
+                + " -fx-padding: 6 12; -fx-text-fill: " + (danger ? "#dc2626" : "#111827") + ";"
+                + " -fx-font-size: 12px;");
+        return button;
+    }
+
+    private void deleteServer(ServerInfo server) {
+        servers.remove(server);
+        persistServers();
+        refreshServerList();
+        updateWorkspaceServerFilterOptions();
+        if (server.equals(sshServerComboBox.getValue())) {
+            sshServerComboBox.getSelectionModel().clearSelection();
+        }
     }
 
     private void refreshServerList() {
